@@ -1,6 +1,3 @@
-Here's the updated `README.md` with the correct project name, **Nebula**:
-
-```markdown
 # Nebula
 
 Nebula is a blockchain-based application built using Rust. It implements consensus mechanisms, staking, governance, and cryptographic operations using state-of-the-art libraries like `ed25519-dalek`, `quinn`, and `sled`.
