@@ -75,7 +75,7 @@ Ensure you have the following installed:
 
 3. **Governance**:
     - Propose changes to the blockchain (e.g., gas limit increases).
-    - Vote on proposals to influence blockchain decisions.
+    - vote on proposals to influence blockchain decisions.
 
 4. **Cryptographic Operations**:
     - Sign and verify transactions using Ed25519 signatures.

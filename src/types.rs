@@ -1,9 +1,53 @@
-/// Nebula data types.
-/// Address, Transaction, BlockHeader, Block.
 use serde::{Serialize, Deserialize};
 
 pub type Address = [u8; 32];
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub enum VotingStatus {
+    Open,
+    Pending,
+    Terminated,
+    Unknown,
+}
 
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub enum NeuronStatus {
+    NotDissolving,
+    Dissolving,
+    Dissolved,
+    Spawning
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub enum Vote {
+    None,
+    Yes,
+    No,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct VotingNeuron {
+    name: String,
+    id: u64,
+    vote: Vote,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct Neuron {
+    name: String,
+    id: u64,
+    state: NeuronStatus,
+    staked: bool,
+    staked_amount: usize,
+    dissolve_days: chrono::prelude::NaiveDate,
+    age: chrono::prelude::NaiveDate,
+    voting_power: u32,
+    date_created: chrono::DateTime<chrono::prelude::Utc>,
+    dissolve_delay_bonus: u32,
+    age_bonus: u32,
+    total_bonus: u32,
+    is_genesis: bool,
+    is_known_neuron: bool,
+}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
     pub from: Address,

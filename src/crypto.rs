@@ -1,5 +1,3 @@
-/// Nebula cryptography.
-/// Uses ed25519-dalek for sign/verify.
 use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Verifier, Signer};
 use crate::types::Transaction;
 

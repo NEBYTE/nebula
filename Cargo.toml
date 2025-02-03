@@ -14,6 +14,7 @@ tokio-stream = "0.1.17"
 quinn = "0.10"
 tokio-rustls = "0.24"
 rcgen = "0.10"
+chrono = "0.4.39"
 
 
 [dev-dependencies]
