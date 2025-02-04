@@ -15,6 +15,6 @@ pub fn verify_data(verifying_key: &VerifyingKey, message: &[u8], signature: &[u8
 }
 
 pub fn sign_transaction(tx: &mut Transaction, signing_key: &SigningKey) {
-    let raw = bincode::serialize(&*tx).unwrap();
+    let raw = bincode::serialize(tx).unwrap();
     tx.signature = sign_data(signing_key, &raw);
 }

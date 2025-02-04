@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use tokio_rustls::rustls::PrivateKey;
 
 pub type Address = [u8; 32];
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -26,27 +27,31 @@ pub enum Vote {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VotingNeuron {
-    name: String,
-    id: u64,
-    vote: Vote,
+    pub name: String,
+    pub id: u64,
+    pub vote: Vote,
+    pub private_address: Address,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct Neuron {
-    name: String,
-    id: u64,
-    state: NeuronStatus,
-    staked: bool,
-    staked_amount: usize,
-    dissolve_days: chrono::prelude::NaiveDate,
-    age: chrono::prelude::NaiveDate,
-    voting_power: u32,
-    date_created: chrono::DateTime<chrono::prelude::Utc>,
-    dissolve_delay_bonus: u32,
-    age_bonus: u32,
-    total_bonus: u32,
-    is_genesis: bool,
-    is_known_neuron: bool,
+    pub private_address: Address,
+    pub name: String,
+    pub visibility: bool,
+    pub id: u64,
+    pub state: NeuronStatus,
+    pub staked: bool,
+    pub staked_amount: u64,
+    pub dissolve_days: chrono::prelude::NaiveDate,
+    pub age: chrono::prelude::NaiveDate,
+    pub voting_power: u32,
+    pub date_created: chrono::DateTime<chrono::prelude::Utc>,
+    pub dissolve_delay_bonus: u32,
+    pub age_bonus: u32,
+    pub total_bonus: u32,
+    pub is_genesis: bool,
+    pub is_known_neuron: bool,
+    pub validator: Option<Address>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {

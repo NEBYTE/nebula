@@ -1,7 +1,7 @@
 use std::collections::{BinaryHeap, HashMap};
 use std::sync::{Arc, RwLock, Mutex};
 use chrono::{DateTime, Duration, Utc};
-use crate::types::{Address, VotingStatus, VotingNeuron, Neuron};
+use crate::types::{Address, VotingStatus, VotingNeuron, Neuron, Vote};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tally {
@@ -76,8 +76,15 @@ impl Governance {
         }
     }
 
-    pub fn propose(&self, topic: String, proposer_id: u64) -> u64 {
+    pub fn propose(&self, topic: String, caller: Address, proposer_id: u64) -> Result<u64, String> {
         let now = Utc::now();
+
+        let neurons = self.neurons.lock().unwrap();
+        let neuron = neurons.get(&proposer_id).ok_or("Proposer does not own a neuron")?;
+
+        if neuron.private_address != caller {
+            return Err("Caller does not own the neuron".to_string());
+        }
 
         let mut next_id = self.next_id.lock().unwrap();
         let proposal_id = *next_id;
@@ -109,16 +116,39 @@ impl Governance {
 
         let mut heap = self.proposals.write().unwrap();
         heap.push(proposal);
-        proposal_id
+        Ok(proposal_id)
     }
 
-    pub fn vote(&self, proposal_id: u64, vote_for: bool, stake: u64) -> Result<(), String> {
+    pub fn vote(&self, caller: Address, neuron_id: u64, proposal_id: u64, vote_for: bool, stake: u64) -> Result<(), String> {
+        let mut neurons = self.neurons.lock().unwrap();
+        let neuron = neurons.get_mut(&neuron_id).ok_or("Proposer does not own a neuron")?;
+
+        if neuron.private_address != caller {
+            return Err("Caller does not own the neuron".to_string());
+        }
+
         let mut heap = self.proposals.write().unwrap();
         let mut temp = Vec::new();
         let mut found = None;
 
         while let Some(mut proposal) = heap.pop() {
             if proposal.id == proposal_id {
+
+                if proposal.votes_of_neurons.contains_key(&neuron_id) {
+                    return Err("Neuron has already voted on this proposal".to_string());
+                }
+
+
+                let vote = if vote_for { Vote::Yes } else { Vote::No };
+                let voting_neuron = VotingNeuron {
+                    name: neuron.name.clone(),
+                    id: neuron.id,
+                    vote,
+                    private_address: caller,
+                };
+
+                proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
+
                 if vote_for {
                     proposal.tally.yes += stake;
                 } else {
@@ -144,14 +174,29 @@ impl Governance {
         }
     }
 
-    pub fn finalize(&self, proposal_id: u64) -> Option<bool> {
-        let heap = self.proposals.read().unwrap();
-        for proposal in heap.clone().into_sorted_vec() {
+    pub fn finalize(&self, proposal_id: u64) -> Result<bool, String> {
+        let mut heap = self.proposals.write().unwrap();
+        let mut temp = Vec::new();
+        let mut finalized = None;
+
+        while let Some(mut proposal) = heap.pop() {
             if proposal.id == proposal_id {
-                return Some(proposal.tally.yes > proposal.tally.no);
+                proposal.status = VotingStatus::Terminated;
+                finalized = Some(proposal.tally.yes > proposal.tally.no);
+                break;
+            } else {
+                temp.push(proposal);
             }
         }
-        None
+
+        for p in temp {
+            heap.push(p);
+        }
+
+        match finalized {
+            Some(result) => Ok(result),
+            None => Err("Proposal not found".to_string()),
+        }
     }
 
     pub fn list_proposals(&self) -> Vec<Proposal> {
