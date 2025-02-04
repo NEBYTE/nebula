@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use chrono::Utc;
-use crate::types::{Address, Neuron, NeuronStatus};
+use ed25519_dalek::SigningKey;
+use crate::types::{Neuron, NeuronStatus};
 
 pub struct NervousSystem {
     pub neurons: Arc<Mutex<HashMap<u64, Neuron>>>,
@@ -16,7 +17,7 @@ impl NervousSystem {
         }
     }
 
-    pub fn create_neuron(&self, caller: Address, name: String, dissolve_days: i64) -> Result<u64, String> {
+    pub fn create_neuron(&self, caller: &SigningKey, name: String, dissolve_days: i64) -> Result<u64, String> {
         let now = Utc::now();
         let neuron_id;
 
@@ -30,7 +31,7 @@ impl NervousSystem {
             name,
             visibility: true,
             id: neuron_id,
-            private_address: caller,
+            private_address: Arc::new(caller.clone()),
             state: NeuronStatus::NotDissolving,
             staked: false,
             staked_amount: 0,

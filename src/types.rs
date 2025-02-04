@@ -1,12 +1,28 @@
+use std::sync::Arc;
+use ed25519_dalek::SigningKey;
 use serde::{Serialize, Deserialize};
-use tokio_rustls::rustls::PrivateKey;
-
-pub type Address = [u8; 32];
+pub type Address = String;
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum VotingStatus {
     Open,
     Pending,
     Terminated,
+    Unknown,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub enum TransactionType {
+    Transfer,
+    Mint,
+    Approve,
+    Burn,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub enum TransactionStatus {
+    Completed,
+    Failed,
+    Pending,
     Unknown,
 }
 
@@ -25,17 +41,17 @@ pub enum Vote {
     No,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct VotingNeuron {
     pub name: String,
     pub id: u64,
     pub vote: Vote,
-    pub private_address: Address,
+    pub private_address: Arc<SigningKey>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Neuron {
-    pub private_address: Address,
+    pub private_address: Arc<SigningKey>,
     pub name: String,
     pub visibility: bool,
     pub id: u64,
@@ -55,11 +71,17 @@ pub struct Neuron {
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
+    pub hash: String,
+    pub r#type: TransactionType,
+    pub status: TransactionStatus,
+    pub index: u32,
+    pub timestamp: chrono::DateTime<chrono::prelude::Utc>,
     pub from: Address,
     pub to: Address,
     pub amount: u64,
-    pub nonce: u64,
-    pub signature: Vec<u8>,
+    pub fee: u64,
+    pub memo: u32,
+    pub nrc_memo: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -71,7 +93,7 @@ pub struct BlockHeader {
     pub signature: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,

@@ -1,22 +1,23 @@
-use std::collections::{BinaryHeap, HashMap};
-use std::sync::{Arc, RwLock, Mutex};
-use crate::types::{Address, Neuron};
+use std::collections::{HashMap};
+use std::sync::{Arc, Mutex};
+use ed25519_dalek::SigningKey;
+use crate::types::{Neuron};
 pub struct StakingModule {
     pub neurons: Arc<Mutex<HashMap<u64, Neuron>>>,
 }
 
 impl StakingModule {
-    pub fn new() -> Self {
+    pub fn new(neurons: Arc<Mutex<HashMap<u64, Neuron>>>) -> Self {
         Self {
-            neurons: Arc::new(Mutex::new(HashMap::new())),
+            neurons
         }
     }
 
-    pub fn stake(&mut self, caller: Address, neuron_id: u64, amount: u64) -> Result<(), String> {
+    pub fn stake(&mut self, caller: &SigningKey, neuron_id: u64, amount: u64) -> Result<(), String> {
         let mut neurons = self.neurons.lock().unwrap();
         let neuron = neurons.get_mut(&neuron_id).ok_or("Neuron not found")?;
 
-        if neuron.private_address != caller {
+        if neuron.private_address != Arc::new(caller.clone()) {
             return Err("Caller is not the owner of this neuron".to_string());
         }
 
@@ -26,11 +27,11 @@ impl StakingModule {
         Ok(())
     }
 
-    pub fn unstake(&mut self, caller: Address, neuron_id: u64, amount: u64) -> Result<(), String> {
+    pub fn unstake(&mut self, caller: &SigningKey, neuron_id: u64, amount: u64) -> Result<(), String> {
         let mut neurons = self.neurons.lock().unwrap();
         let neuron = neurons.get_mut(&neuron_id).ok_or("Neuron not found")?;
 
-        if neuron.private_address != caller {
+        if neuron.private_address != Arc::new(caller.clone()) {
             return Err("Caller is not the owner of this neuron".to_string());
         }
 

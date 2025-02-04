@@ -1,5 +1,5 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Verifier, Signer};
-use crate::types::Transaction;
+use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
+use std::convert::TryFrom;
 
 pub fn sign_data(signing_key: &SigningKey, message: &[u8]) -> Vec<u8> {
     let signature: Signature = signing_key.sign(message);
@@ -12,9 +12,4 @@ pub fn verify_data(verifying_key: &VerifyingKey, message: &[u8], signature: &[u8
     } else {
         false
     }
-}
-
-pub fn sign_transaction(tx: &mut Transaction, signing_key: &SigningKey) {
-    let raw = bincode::serialize(tx).unwrap();
-    tx.signature = sign_data(signing_key, &raw);
 }

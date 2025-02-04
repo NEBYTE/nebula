@@ -1,7 +1,7 @@
 use std::collections::{BinaryHeap, HashMap};
 use std::sync::{Arc, RwLock, Mutex};
 use chrono::{DateTime, Duration, Utc};
-use crate::types::{Address, VotingStatus, VotingNeuron, Neuron, Vote};
+use crate::types::{VotingStatus, VotingNeuron, Neuron, Vote};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tally {
@@ -35,6 +35,8 @@ pub struct Proposal {
 }
 
 use std::cmp::Ordering;
+use ed25519_dalek::SigningKey;
+
 impl PartialOrd for Proposal {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -66,23 +68,23 @@ pub struct Governance {
 }
 
 impl Governance {
-    pub fn new() -> Self {
+    pub fn new(neurons: Arc<Mutex<HashMap<u64, Neuron>>>) -> Self {
         Self {
             proposals: Arc::new(RwLock::new(BinaryHeap::new())),
-            neurons: Arc::new(Mutex::new(HashMap::new())),
+            neurons,
             total_voting_power: 500_000_000,
             daily_voting_rewards: 90_500,
             next_id: Arc::new(Mutex::new(1)), // genesis is 0 soo real proposal is 1
         }
     }
 
-    pub fn propose(&self, topic: String, caller: Address, proposer_id: u64) -> Result<u64, String> {
+    pub fn propose(&self, topic: String, caller: &SigningKey, proposer_id: u64) -> Result<u64, String> {
         let now = Utc::now();
 
         let neurons = self.neurons.lock().unwrap();
         let neuron = neurons.get(&proposer_id).ok_or("Proposer does not own a neuron")?;
 
-        if neuron.private_address != caller {
+        if neuron.private_address != Arc::new(caller.clone()) {
             return Err("Caller does not own the neuron".to_string());
         }
 
@@ -119,11 +121,11 @@ impl Governance {
         Ok(proposal_id)
     }
 
-    pub fn vote(&self, caller: Address, neuron_id: u64, proposal_id: u64, vote_for: bool, stake: u64) -> Result<(), String> {
+    pub fn vote(&self, caller: &SigningKey, neuron_id: u64, proposal_id: u64, vote_for: bool, stake: u64) -> Result<(), String> {
         let mut neurons = self.neurons.lock().unwrap();
         let neuron = neurons.get_mut(&neuron_id).ok_or("Proposer does not own a neuron")?;
 
-        if neuron.private_address != caller {
+        if neuron.private_address != Arc::new(caller.clone()) {
             return Err("Caller does not own the neuron".to_string());
         }
 
@@ -144,7 +146,7 @@ impl Governance {
                     name: neuron.name.clone(),
                     id: neuron.id,
                     vote,
-                    private_address: caller,
+                    private_address: Arc::new(caller.clone()),
                 };
 
                 proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
