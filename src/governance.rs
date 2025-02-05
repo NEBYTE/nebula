@@ -129,6 +129,10 @@ impl Governance {
             return Err("Caller does not own the neuron".to_string());
         }
 
+        if neuron.staked_amount < stake {
+            return Err("Neuron does not have enough stake to vote".to_string())
+        }
+
         let mut heap = self.proposals.write().unwrap();
         let mut temp = Vec::new();
         let mut found = None;
@@ -151,12 +155,13 @@ impl Governance {
 
                 proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
 
+                let effective_stake = (stake as f64 * neuron.bonus_multiplier) as u64;
                 if vote_for {
-                    proposal.tally.yes += stake;
+                    proposal.tally.yes += effective_stake;
                 } else {
-                    proposal.tally.no += stake;
+                    proposal.tally.no += effective_stake;
                 }
-                proposal.tally.total += stake;
+                proposal.tally.total += effective_stake;
                 found = Some(proposal);
                 break;
             } else {
@@ -202,7 +207,7 @@ impl Governance {
     }
 
     pub fn list_proposals(&self) -> Vec<Proposal> {
-        let heap = self.proposals.read().unwrap();
+        let heap = self.proposals.read().map_err(|_| "RwLock poisoned unfortunatly").unwrap();
         heap.clone().into_sorted_vec()
     }
 }

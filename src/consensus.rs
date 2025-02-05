@@ -30,25 +30,77 @@ impl ConsensusEngine {
         }
     }
     pub fn select_next_validator(&self) -> Option<Address> {
-        let mut stake_map = HashMap::new();
-        let neurons = self.neurons.lock().unwrap();
-        for neuron in neurons.values() {
-            if let Some(v) = &neuron.validator {
-                *stake_map.entry(v).or_insert(0) += neuron.staked_amount;
+        let now = Utc::now().timestamp_nanos_opt().ok_or("Couldn't fetch timestamp for UTC");
+        let neurons_lock = self.neurons.lock().map_err(|_| "Mutex poisoned").ok()?;
+
+        let stake_weighted: Vec<(Address, u64)> = neurons_lock
+            .values()
+            .filter_map(|neuron| neuron.validator.clone().map(|v| (v, neuron.staked_amount)))
+            .collect();
+
+        if stake_weighted.is_empty() {
+            return None;
+        }
+
+        let total_stake: u64 = stake_weighted.iter().map(|(_, stake)| stake).sum();
+        let seed = now.unwrap().wrapping_add(total_stake as i64);
+        let hash = Sha256::digest(&seed.to_be_bytes());
+        let roll = u64::from_be_bytes(hash[0..8].try_into().unwrap()) % total_stake;
+
+        let mut cumulative = 0;
+        for (validator, stake) in stake_weighted {
+            cumulative += stake;
+            if roll < cumulative {
+                return Some(validator);
             }
         }
 
-        stake_map.iter().max_by_key(|(_, stake)| *stake).map(|(a, _)| *a).cloned()
+        None
     }
     pub fn add_transaction(&mut self, tx: Transaction) -> Result<(), String> {
-        let computed = compute_transaction_hash(&tx)?;
-        if tx.hash != computed {
-            return Err("Invalid transaction hash".into());
-        }
-        self.mempool.push(tx);
+        let expected_hash = compute_transaction_hash(&tx)?;
 
+        if tx.hash != expected_hash {
+            return Err(format!(
+                "Invalid transaction hash: Expected {}, got {}",
+                expected_hash, tx.hash
+            ));
+        }
+
+        let sender_pubkey_bytes = hex::decode(&tx.from)
+            .map_err(|_| format!("Invalid sender address format: {}", &tx.from))?;
+
+        if sender_pubkey_bytes.len() != 32 {
+            return Err(format!(
+                "Invalid public key length: Expected 32 bytes, got {}",
+                sender_pubkey_bytes.len()
+            ));
+        }
+
+        let sender_pubkey = VerifyingKey::from_bytes(&sender_pubkey_bytes.try_into().unwrap())
+            .map_err(|_| "Invalid sender public key: Failed to create VerifyingKey")?;
+
+        let signature_copy = tx.signature.clone();
+
+        let mut tx_clone = tx.clone();
+        tx_clone.signature.clear();
+        tx_clone.hash.clear();
+
+        let serialized_tx = bincode::serialize(&tx_clone)
+            .map_err(|e| format!("Verification Serialization Error: {}", e))?;
+
+        if signature_copy.is_empty() {
+            return Err("Invalid transaction signature: Signature is missing.".to_string());
+        }
+
+        if !verify_data(&sender_pubkey, &serialized_tx, &signature_copy) {
+            return Err("Invalid transaction signature: Signature does not match.".to_string());
+        }
+
+        self.mempool.push(tx);
         Ok(())
     }
+
     pub fn produce_block(&mut self, signing_key: &SigningKey) -> Result<Block, String> {
         let transactions = self.mempool.drain(..).collect::<Vec<_>>();
         let merkle_root = compute_merkle_root(&transactions);
@@ -117,6 +169,7 @@ impl ConsensusEngine {
     pub fn slash(&mut self, validator: Address, amount: u64) {
         let penalty = amount * 2;
         let mut neurons = self.neurons.lock().unwrap();
+
         for neuron in neurons.values_mut() {
             if neuron.validator == Some(validator.clone()) {
                 if neuron.staked_amount > penalty {
@@ -184,6 +237,7 @@ pub fn serialize_header_for_signing(header: &BlockHeader) -> Result<Vec<u8>, Str
 pub fn compute_transaction_hash(tx: &Transaction) -> Result<String, String> {
     let mut tx_clone = tx.clone();
     tx_clone.hash.clear();
+    tx_clone.signature.clear();
 
     let bytes = bincode::serialize(&tx_clone).map_err(|e| e.to_string())?;
     let hash_bytes = crypto_hash(&bytes);

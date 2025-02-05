@@ -2,6 +2,7 @@ use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
 use std::convert::TryFrom;
 
 pub fn sign_data(signing_key: &SigningKey, message: &[u8]) -> Vec<u8> {
+    // TODO: in a full ICP like implementation so we ned replace with threshold signature aggregation.
     let signature: Signature = signing_key.sign(message);
     signature.to_bytes().to_vec()
 }

@@ -4,13 +4,16 @@ use chrono::Utc;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use hex;
+use crate::crypto::sign_data;
 
 pub fn create_wallet() -> (SigningKey, VerifyingKey, Address) {
     let signing_key = SigningKey::generate(&mut OsRng);
     let verifying_key = VerifyingKey::from(&signing_key);
-    let address = hex::encode(signing_key.verifying_key().to_bytes()) as Address;
+    let address = hex::encode(verifying_key.to_bytes());
+
     (signing_key, verifying_key, address)
 }
+
 
 pub fn build_transaction(
     consensus: &mut ConsensusEngine,
@@ -21,7 +24,7 @@ pub fn build_transaction(
     nrc_memo: u32,
     tx_type: TransactionType,
 ) -> Transaction {
-   let fee = amount / 100;
+    let fee = amount / 100;
    let index = consensus
        .chain
        .iter()
@@ -41,12 +44,20 @@ pub fn build_transaction(
         fee,
         memo,
         nrc_memo,
+        signature: vec![],
     }
 }
+pub fn finalize_transaction(tx: &mut Transaction, signing_key: &SigningKey) -> Result<(), String> {
+    let mut tx_clone = tx.clone();
+    tx_clone.hash.clear();
+    tx_clone.signature.clear();
 
-pub fn finalize_transaction(tx: &mut Transaction) -> Result<(), String> {
-    let hash = compute_transaction_hash(tx)?;
-    tx.hash = hash;
+    tx.hash = compute_transaction_hash(&tx_clone)?;
+
+    let serialized_tx = bincode::serialize(&tx_clone)
+        .map_err(|e| format!("Serialization Error: {}", e))?;
+    tx.signature = sign_data(signing_key, &serialized_tx);
+
     Ok(())
 }
 

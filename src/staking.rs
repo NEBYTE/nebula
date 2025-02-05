@@ -1,5 +1,6 @@
 use std::collections::{HashMap};
 use std::sync::{Arc, Mutex};
+use chrono::Utc;
 use ed25519_dalek::SigningKey;
 use crate::types::{Neuron};
 pub struct StakingModule {
@@ -35,6 +36,10 @@ impl StakingModule {
             return Err("Caller is not the owner of this neuron".to_string());
         }
 
+        if neuron.unlock_date > Utc::now().date_naive() {
+            return Err("Neuron is locked in dissolve delay".to_string());
+        }
+
         if neuron.staked_amount < amount {
             return Err("Insufficient staked amount".to_string());
         }
@@ -57,8 +62,10 @@ impl StakingModule {
 
         for neuron in neurons.values_mut() {
             let ratio = neuron.staked_amount as f64 / total_staked as f64;
-            let reward = (reward_pool as f64 * ratio) as u64;
+            let maturity_bonus = 1.0 + (neuron.maturity as f64 / 100.0);
+            let reward = ((reward_pool as f64 * ratio) * maturity_bonus) as u64;
             neuron.staked_amount += reward;
+            neuron.maturity += 1;
         }
     }
 }

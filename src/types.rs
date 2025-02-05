@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use ed25519_dalek::SigningKey;
 use serde::{Serialize, Deserialize};
@@ -49,18 +51,21 @@ pub struct VotingNeuron {
     pub private_address: Arc<SigningKey>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Neuron {
     pub private_address: Arc<SigningKey>,
+    pub address: Address,
     pub name: String,
     pub visibility: bool,
     pub id: u64,
     pub state: NeuronStatus,
     pub staked: bool,
     pub staked_amount: u64,
-    pub dissolve_days: chrono::prelude::NaiveDate,
+    pub unlock_date: chrono::prelude::NaiveDate,
     pub age: chrono::prelude::NaiveDate,
     pub voting_power: u32,
+    pub maturity: u64,
+    pub bonus_multiplier: f64,
     pub date_created: chrono::DateTime<chrono::prelude::Utc>,
     pub dissolve_delay_bonus: u32,
     pub age_bonus: u32,
@@ -70,18 +75,43 @@ pub struct Neuron {
     pub validator: Option<Address>,
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub struct Transaction {
+    #[serde(rename = "hash")]
     pub hash: String,
+
+    #[serde(rename = "type")]
     pub r#type: TransactionType,
+
+    #[serde(rename = "status")]
     pub status: TransactionStatus,
+
+    #[serde(rename = "index")]
     pub index: u32,
+
+    #[serde(rename = "timestamp")]
     pub timestamp: chrono::DateTime<chrono::prelude::Utc>,
+
+    #[serde(rename = "from")]
     pub from: Address,
+
+    #[serde(rename = "to")]
     pub to: Address,
+
+    #[serde(rename = "amount")]
     pub amount: u64,
+
+    #[serde(rename = "fee")]
     pub fee: u64,
+
+    #[serde(rename = "memo")]
     pub memo: u32,
+
+    #[serde(rename = "nrc_memo")]
     pub nrc_memo: u32,
+
+    #[serde(rename = "signature")]
+    pub signature: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
