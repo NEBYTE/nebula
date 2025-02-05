@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use chrono::Utc;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use crate::types::{Neuron, NeuronStatus};
+use crate::core::types::{Neuron, NeuronStatus};
 
 pub struct NervousSystem {
     pub neurons: Arc<Mutex<HashMap<u64, Neuron>>>,

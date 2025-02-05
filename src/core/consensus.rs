@@ -1,5 +1,5 @@
-use crate::types::{Block, BlockHeader, Transaction, Address, Neuron};
-use crate::crypto::{sign_data, verify_data};
+use crate::core::types::{Block, BlockHeader, Transaction, Address, Neuron};
+use crate::core::crypto::{sign_data, verify_data};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use chrono::Utc;
 use sha2::{Digest, Sha256};

@@ -1,10 +1,10 @@
-use crate::types::{Transaction, TransactionType, TransactionStatus, Address, Block};
-use crate::consensus::{ConsensusEngine, compute_transaction_hash};
+use crate::core::types::{Transaction, TransactionType, TransactionStatus, Address, Block};
+use crate::core::consensus::{ConsensusEngine, compute_transaction_hash};
 use chrono::Utc;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use hex;
-use crate::crypto::sign_data;
+use crate::core::crypto::sign_data;
 
 pub fn create_wallet() -> (SigningKey, VerifyingKey, Address) {
     let signing_key = SigningKey::generate(&mut OsRng);
@@ -13,7 +13,6 @@ pub fn create_wallet() -> (SigningKey, VerifyingKey, Address) {
 
     (signing_key, verifying_key, address)
 }
-
 
 pub fn build_transaction(
     consensus: &mut ConsensusEngine,

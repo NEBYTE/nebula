@@ -71,7 +71,7 @@ $ cargo run
 
 ### Creating a Wallet
 ```rust
-let (signing_key, public_key, address) = api::create_wallet();
+let (signing_key, public_key, address) = core::api::v1::create_wallet();
 println!("Address: {}", address); // Shareable
 println!("Public Key: {}", public_key); // Shareable
 println!("Private Key: {}", signing_key); // Do not SHARE
@@ -82,9 +82,9 @@ println!("Private Key: {}", signing_key); // Do not SHARE
 let recipient = "recipient_address";
 let amount = 100;
 
-let mut tx = api::build_transaction(&mut consensus_engine, address, recipient, amount);
-api::finalize_transaction(&mut tx)?;
-api::submit_transaction(&mut consensus_engine, tx)?;
+let mut tx = core::api::v1::build_transaction(&mut consensus_engine, address, recipient, amount);
+core::api::v1::finalize_transaction(&mut tx)?;
+core::api::v1::submit_transaction(&mut consensus_engine, tx)?;
 ```
 
 ### Producing a Block
@@ -102,14 +102,14 @@ println!("Neuron created with id: {}", neuron_id);
 
 ### Staking
 ```rust
-let mut staking_module = staking::StakingModule::new(nervous_system.neurons.clone());
+let mut staking_module = core::staking::StakingModule::new(nervous_system.neurons.clone());
 staking_module.stake(&signing_key, neuron_id, 50)?;
 println!("Staked 50 tokens to neuron {}", neuron_id);
 ```
 
 ### Governance and Voting
 ```rust
-let governance = governance::Governance::new(nervous_system.neurons.clone());
+let governance = core::governance::Governance::new(nervous_system.neurons.clone());
 
 let proposal_id = governance.propose("Increase block size".to_string(), &signing_key, neuron_id)?;
 println!("Proposal created with id: {}", proposal_id);

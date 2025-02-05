@@ -4,6 +4,7 @@ use std::sync::Arc;
 use ed25519_dalek::SigningKey;
 use serde::{Serialize, Deserialize};
 pub type Address = String;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum VotingStatus {
     Open,
@@ -33,7 +34,7 @@ pub enum NeuronStatus {
     NotDissolving,
     Dissolving,
     Dissolved,
-    Spawning
+    Spawning,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -74,6 +75,7 @@ pub struct Neuron {
     pub is_known_neuron: bool,
     pub validator: Option<Address>,
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct Transaction {

@@ -1,7 +1,7 @@
 use std::collections::{BinaryHeap, HashMap};
 use std::sync::{Arc, RwLock, Mutex};
 use chrono::{DateTime, Duration, Utc};
-use crate::types::{VotingStatus, VotingNeuron, Neuron, Vote};
+use crate::core::types::{VotingStatus, VotingNeuron, Neuron, Vote};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tally {
