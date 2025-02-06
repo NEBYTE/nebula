@@ -1,18 +1,8 @@
-use crate::core::types::{Transaction, TransactionType, TransactionStatus, Address, Block};
+use crate::core::types::{Transaction, TransactionType, TransactionStatus, Address};
 use crate::core::consensus::{ConsensusEngine, compute_transaction_hash};
-use chrono::Utc;
-use ed25519_dalek::{SigningKey, VerifyingKey};
-use rand::rngs::OsRng;
-use hex;
 use crate::core::crypto::sign_data;
-
-pub fn create_wallet() -> (SigningKey, VerifyingKey, Address) {
-    let signing_key = SigningKey::generate(&mut OsRng);
-    let verifying_key = VerifyingKey::from(&signing_key);
-    let address = hex::encode(verifying_key.to_bytes());
-
-    (signing_key, verifying_key, address)
-}
+use chrono::Utc;
+use ed25519_dalek::SigningKey;
 
 pub fn build_transaction(
     consensus: &mut ConsensusEngine,
@@ -24,11 +14,11 @@ pub fn build_transaction(
     tx_type: TransactionType,
 ) -> Transaction {
     let fee = amount / 100;
-   let index = consensus
-       .chain
-       .iter()
-       .map(|chain| chain.transactions.len())
-       .sum::<usize>() as u32
+    let index = consensus
+        .chain
+        .iter()
+        .map(|chain| chain.transactions.len())
+        .sum::<usize>() as u32
         + consensus.mempool.len() as u32;
 
     Transaction {
@@ -46,6 +36,7 @@ pub fn build_transaction(
         signature: vec![],
     }
 }
+
 pub fn finalize_transaction(tx: &mut Transaction, signing_key: &SigningKey) -> Result<(), String> {
     let mut tx_clone = tx.clone();
     tx_clone.hash.clear();
@@ -61,13 +52,5 @@ pub fn finalize_transaction(tx: &mut Transaction, signing_key: &SigningKey) -> R
 }
 
 pub fn submit_transaction(consensus: &mut ConsensusEngine, tx: Transaction) -> Result<(), String> {
-    consensus.add_transaction(tx)
-}
-
-pub fn get_current_validator(consensus: &ConsensusEngine) -> Option<Address> {
-    consensus.select_next_validator()
-}
-
-pub fn get_latest_block(consensus: &ConsensusEngine) -> Option<Block> {
-    consensus.chain.last().cloned()
+    crate::core::consensus::transaction::add_transaction(consensus, tx)
 }

@@ -6,7 +6,7 @@
 
 ---
 
-# Nebula
+# Nebula (Early Alpha Release v0.1.0-pre.alpha.1)
 
 ![Maintainer](https://img.shields.io/badge/maintainer-rustyspottedcatt-blue)
 [![made-with-rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
@@ -71,55 +71,67 @@ $ cargo run
 
 ### Creating a Wallet
 ```rust
-let (signing_key, public_key, address) = core::api::v1::create_wallet();
-println!("Address: {}", address); // Shareable
+use core::api::v1::*;
+
+let (signing_key, _public_key, address) = create_wallet();
+println!("Wallet created: {:x?}", address); // Shareable (used to exchange)
 println!("Public Key: {}", public_key); // Shareable
 println!("Private Key: {}", signing_key); // Do not SHARE
 ```
 
 ### Creating and Signing Transactions
 ```rust
-let recipient = "recipient_address";
+use core::api::v1::*;
+
+let recipient = "recipient_address".to_string();
 let amount = 100;
 
-let mut tx = core::api::v1::build_transaction(&mut consensus_engine, address, recipient, amount);
-core::api::v1::finalize_transaction(&mut tx)?;
-core::api::v1::submit_transaction(&mut consensus_engine, tx)?;
+let mut tx = build_transaction(&mut consensus_engine, address, recipient, amount);
+finalize_transaction(&mut tx)?;
+submit_transaction(&mut consensus_engine, tx)?;
 ```
 
 ### Producing a Block
 ```rust
-let block = consensus_engine.produce_block(&signing_key)?;
+use crate::core::consensus::block::produce_block;
+
+let block = produce_block(&mut consensus_engine, &signing_key)?;
 println!("Block produced with {} transaction(s)", block.transactions.len());
 println!("Block timestamp: {}", block.header.timestamp);
 ```
 
 ### Neuron Management
 ```rust
-let neuron_id = nervous_system.create_neuron(&signing_key, "Test Neuron".to_string(), 30)?;
+use crate::core::nervous::neuron_handler::create_neuron;
+
+let neuron_id = create_neuron(&nervous_system, &signing_key, "Test Neuron".to_string(), 30)?;
 println!("Neuron created with id: {}", neuron_id);
 ```
 
 ### Staking
 ```rust
-let mut staking_module = core::staking::StakingModule::new(nervous_system.neurons.clone());
-staking_module.stake(&signing_key, neuron_id, 50)?;
+use crate::core::staking::staking_handler::{stake, unstake};
+
+let mut staking_module = core::staking::staking_module::StakingModule::new(nervous_system.neurons.clone());
+stake(&mut staking_module, &signing_key, neuron_id, 50)?;
 println!("Staked 50 tokens to neuron {}", neuron_id);
 ```
 
 ### Governance and Voting
 ```rust
+use crate::core::governance::{proposal_handler::propose, voting::{vote, finalize}};
+
 let governance = core::governance::Governance::new(nervous_system.neurons.clone());
 
-let proposal_id = governance.propose("Increase block size".to_string(), &signing_key, neuron_id)?;
+let proposal_id = propose(&governance, "Increase block size".to_string(), &signing_key, neuron_id)?;
 println!("Proposal created with id: {}", proposal_id);
 
-match governance.vote(&signing_key, neuron_id, proposal_id, true, 10) {
-    Ok(_) => println!("Voted on proposal {}", proposal_id),
-    Err(e) => println!("Voting failed: {}", e),
+match vote(&governance, &signing_key, neuron_id, proposal_id, true, 10) {
+Ok(_) => println!("Voted on proposal {}", proposal_id),
+Err(e) => println!("Voting failed: {}", e),
 }
 
-let proposal_result = governance.finalize(proposal_id)?;
+let proposal_result = finalize(&governance, proposal_id)?;
 println!("Proposal finalized with result: {}", proposal_result);
 ```
 
