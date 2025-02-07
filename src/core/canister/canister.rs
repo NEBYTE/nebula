@@ -112,7 +112,7 @@ impl Canister {
             }
             CanisterFunctionPayload::Stake {
                 staking_module,
-                consensus_engine
+                consensus_engine,
                 signing_key,
                 neuron_id,
                 amount,
