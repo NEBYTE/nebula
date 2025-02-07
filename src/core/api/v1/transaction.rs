@@ -1,6 +1,9 @@
 use crate::core::types::{Transaction, TransactionType, TransactionStatus, Address};
-use crate::core::consensus::{ConsensusEngine, compute_transaction_hash};
+use crate::core::consensus::{compute_transaction_hash};
 use crate::core::crypto::sign_data;
+use crate::core::canister::canister::{Canister, CanisterFunctionPayload};
+use crate::core::consensus::model::ConsensusEngine;
+
 use chrono::Utc;
 use ed25519_dalek::SigningKey;
 
@@ -51,6 +54,13 @@ pub fn finalize_transaction(tx: &mut Transaction, signing_key: &SigningKey) -> R
     Ok(())
 }
 
-pub fn submit_transaction(consensus: &mut ConsensusEngine, tx: Transaction) -> Result<(), String> {
-    crate::core::consensus::transaction::add_transaction(consensus, tx)
+pub fn submit_transaction(
+    canister: &mut Canister,
+    consensus_engine: &mut ConsensusEngine,
+    tx: Transaction,
+) -> Result<String, String> {
+    canister.execute_function(CanisterFunctionPayload::Transfer {
+        consensus_engine,
+        tx,
+    })
 }

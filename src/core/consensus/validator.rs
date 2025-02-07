@@ -1,7 +1,7 @@
 use crate::core::types::{Address};
 use sha2::{Digest, Sha256};
 use chrono::Utc;
-use crate::core::consensus::ConsensusEngine;
+use crate::core::consensus::model::ConsensusEngine;
 
 #[derive(Clone)]
 pub struct ValidatorInfo {

@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 use ed25519_dalek::SigningKey;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::de::Error as DeError;
 pub type Address = String;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -52,9 +53,27 @@ pub struct VotingNeuron {
     pub private_address: Arc<SigningKey>,
 }
 
-#[derive(Debug, Clone)]
+fn serialize_signing_key<S>(key: &Arc<SigningKey>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_bytes(&key.to_bytes())
+}
+
+fn deserialize_signing_key<'de, D>(deserializer: D) -> Result<Arc<SigningKey>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+    let key = SigningKey::from_bytes(&bytes.try_into().map_err(|_| DeError::custom("Invalid key length"))?);
+    Ok(Arc::new(key))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Neuron {
+    #[serde(serialize_with = "serialize_signing_key", deserialize_with = "deserialize_signing_key")]
     pub private_address: Arc<SigningKey>,
+
     pub address: Address,
     pub name: String,
     pub visibility: bool,
@@ -125,7 +144,7 @@ pub struct BlockHeader {
     pub signature: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,

@@ -3,11 +3,12 @@ use crate::core::crypto::{verify_data};
 use ed25519_dalek::VerifyingKey;
 use bincode;
 use hex;
-use crate::core::consensus::{crypto_hash, ConsensusEngine};
+use crate::core::consensus::{crypto_hash};
+use crate::core::consensus::model::{Account, ConsensusEngine};
 
 pub fn add_transaction(
     consensus_engine: &mut ConsensusEngine,
-    tx: Transaction
+    tx: Transaction,
 ) -> Result<(), String> {
     let expected_hash = compute_transaction_hash(&tx)?;
 
@@ -32,7 +33,6 @@ pub fn add_transaction(
         .map_err(|_| "Invalid sender public key: Failed to create VerifyingKey")?;
 
     let signature_copy = tx.signature.clone();
-
     let mut tx_clone = tx.clone();
     tx_clone.signature.clear();
     tx_clone.hash.clear();
@@ -47,6 +47,45 @@ pub fn add_transaction(
     if !verify_data(&sender_pubkey, &serialized_tx, &signature_copy) {
         return Err("Invalid transaction signature: Signature does not match.".to_string());
     }
+
+    let mut ledger = consensus_engine.ledger.lock().unwrap();
+
+    let sender_account = match ledger.get(&tx.from) {
+        Some(account) => account.clone(),
+        None => {
+            let new_account = Account {
+                address: tx.from.clone(),
+                public_key: sender_pubkey,
+                balance: 0,
+            };
+            ledger.insert(tx.from.clone(), new_account.clone());
+            new_account
+        }
+    };
+
+    if sender_account.balance < tx.amount {
+        return Err(format!(
+            "Insufficient funds: Sender balance is {} but transaction amount is {}",
+            sender_account.balance, tx.amount
+        ));
+    }
+
+    let receiver_account = match ledger.get(&tx.to) {
+        Some(account) => account.clone(),
+        None => return Err("Invalid transaction receiver account.".to_string()),
+    };
+
+    let updated_sender = Account {
+        balance: sender_account.balance - tx.amount,
+        ..sender_account.clone()
+    };
+    ledger.insert(tx.from.clone(), updated_sender);
+
+    let updated_receiver = Account {
+        balance: receiver_account.balance + tx.amount,
+        ..receiver_account.clone()
+    };
+    ledger.insert(tx.to.clone(), updated_receiver);
 
     consensus_engine.mempool.push(tx);
     Ok(())

@@ -1,5 +1,5 @@
+use crate::core::consensus::model::ConsensusEngine;
 use crate::core::types::{Address};
-use crate::core::consensus::ConsensusEngine;
 
 pub fn delegate_stake(
     consensus_engine: &mut ConsensusEngine,

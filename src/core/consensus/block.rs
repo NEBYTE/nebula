@@ -1,6 +1,7 @@
 use crate::core::types::{Block, BlockHeader, Transaction};
 use crate::core::crypto::{sign_data, verify_data};
-use crate::core::consensus::{crypto_hash, ConsensusEngine};
+use crate::core::consensus::{crypto_hash};
+use crate::core::consensus::model::ConsensusEngine;
 
 use sha2::{Digest, Sha256};
 use chrono::Utc;
