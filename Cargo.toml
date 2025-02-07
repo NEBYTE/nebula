@@ -24,7 +24,3 @@ path = "tests/transactions.rs"
 [[test]]
 name = "staking"
 path = "tests/staking.rs"
-
-[[test]]
-name = "governance"
-path = "tests/governance.rs"

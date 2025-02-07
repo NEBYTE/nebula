@@ -45,8 +45,8 @@ impl ConsensusEngine {
         let ledger = self.ledger.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         ledger.get(&address).cloned()
     }
-    pub fn get_balance(&mut self, address: &str) {
+    pub fn get_balance(&mut self, address: &str) -> u64 {
         let ledger = self.ledger.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        ledger.get(address).map(|account| account.balance).unwrap_or(0);
+        ledger.get(address).map(|account| account.balance).unwrap_or(0)
     }
 }

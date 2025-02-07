@@ -1,43 +1,62 @@
 use nebula::core::staking::staking_module::StakingModule;
-use nebula::core::staking::staking_handler::{stake};
-use nebula::core::types::Neuron;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use ed25519_dalek::SigningKey;
-use rand::rngs::OsRng;
+use nebula::core::staking::staking_handler::stake;
+use nebula::core::consensus::model::ConsensusEngine;
+use nebula::core::consensus::ValidatorInfo;
+use nebula::core::nervous::NervousSystem;
+use nebula::core::api::v1::wallet::create_wallet;
+use nebula::core::nervous::neuron_handler::create_neuron;
 
 #[test]
 fn test_stake() {
-    let neurons = Arc::new(Mutex::new(HashMap::new()));
-    let mut staking_module = StakingModule::new(neurons.clone());
+    let nervous_system = NervousSystem::new();
 
-    let signing_key = SigningKey::generate(&mut OsRng);
-    let neuron_id = 1;
+    let (signing_key, public_key, sender_address) = create_wallet();
+    let validators = vec![ValidatorInfo {
+        address: sender_address.clone(),
+        active: true
+    }];
 
-    neurons.lock().unwrap().insert(neuron_id, Neuron {
-        name: "TestNeuron".to_string(),
-        id: neuron_id,
-        private_address: Arc::new(signing_key.clone()),
-        staked: false,
-        staked_amount: 0,
-        unlock_date: chrono::Utc::now().date_naive(),
-        state: nebula::core::types::NeuronStatus::NotDissolving,
-        visibility: true,
-        address: "test".to_string(),
-        age: chrono::Utc::now().date_naive(),
-        voting_power: 0,
-        maturity: 0,
-        bonus_multiplier: 1.0,
-        date_created: chrono::Utc::now(),
-        dissolve_delay_bonus: 0,
-        age_bonus: 0,
-        total_bonus: 0,
-        is_genesis: false,
-        is_known_neuron: false,
-        validator: None,
-    });
+    let mut consensus_engine = ConsensusEngine::new(validators, nervous_system.neurons.clone());
+    consensus_engine
+        .init_ledger(sender_address.clone(), public_key, 100)
+        .expect("Failed to initialize sender ledger");
 
-    let result = stake(&mut staking_module, &signing_key, neuron_id, 50);
-    assert!(result.is_ok());
-    assert_eq!(neurons.lock().unwrap().get(&neuron_id).unwrap().staked_amount, 50);
+    let neuron_id = create_neuron(
+        &nervous_system,
+        &signing_key,
+        "TestNeuron".to_string(),
+        30,
+    )
+        .expect("Failed to create neuron");
+
+    let mut staking_module = StakingModule::new(nervous_system.neurons.clone());
+
+    let amount_to_stake = 50;
+    let result = stake(
+        &mut staking_module,
+        &mut consensus_engine,
+        &signing_key,
+        neuron_id,
+        amount_to_stake,
+    );
+    assert!(result.is_ok(), "Staking failed: {:?}", result.err());
+
+    let neurons_lock = nervous_system.neurons.lock().unwrap();
+    let updated_neuron = neurons_lock
+        .get(&neuron_id)
+        .expect("Neuron not found");
+    assert_eq!(
+        updated_neuron.staked_amount,
+        amount_to_stake,
+        "Stake amount incorrect"
+    );
+
+    let sender_balance = consensus_engine
+        .get_balance(&sender_address);
+
+    assert_eq!(
+        sender_balance,
+        100 - amount_to_stake,
+        "Ledger balance incorrect after staking"
+    );
 }
