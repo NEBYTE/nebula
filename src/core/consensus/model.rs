@@ -10,21 +10,23 @@ pub struct Account {
     pub public_key: VerifyingKey,
     pub balance: u64,
 }
+
+#[derive(Clone)]
 pub struct ConsensusEngine {
-    pub validators: Vec<ValidatorInfo>,
+    pub validators: Arc<Mutex<Vec<ValidatorInfo>>>,
     pub neurons: Arc<Mutex<HashMap<u64, Neuron>>>,
-    pub mempool: Vec<Transaction>,
-    pub chain: Vec<Block>,
+    pub mempool:Arc<Mutex<Vec<Transaction>>>,
+    pub chain: Arc<Mutex<Vec<Block>>>,
     pub ledger: Arc<Mutex<HashMap<String, Account>>>,
 }
 
 impl ConsensusEngine {
-    pub fn new(validators: Vec<ValidatorInfo>, neurons: Arc<Mutex<HashMap<u64, Neuron>>>) -> Self {
+    pub fn new(validators: Arc<Mutex<Vec<ValidatorInfo>>>, neurons: Arc<Mutex<HashMap<u64, Neuron>>>) -> Self {
         Self {
             validators,
             neurons,
-            mempool: Vec::new(),
-            chain: Vec::new(),
+            mempool: Arc::new(Mutex::new(Vec::new())),
+            chain: Arc::new(Mutex::new(Vec::new())),
             ledger: Arc::new(Mutex::new(HashMap::new()))
         }
     }

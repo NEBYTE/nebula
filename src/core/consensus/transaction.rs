@@ -87,9 +87,24 @@ pub fn add_transaction(
     };
     ledger.insert(tx.to.clone(), updated_receiver);
 
-    consensus_engine.mempool.push(tx);
+    let mut mempool_lock = consensus_engine.mempool.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    mempool_lock.push(tx);
+
     Ok(())
 }
+
+pub fn cancel_transaction(consensus_engine: &mut ConsensusEngine, tx_hash: String) -> Result<(), String> {
+    let mut mempool_lock = consensus_engine.mempool.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let pos = mempool_lock.iter().position(|tx| tx.hash == tx_hash);
+
+    if let Some(index) = pos {
+        mempool_lock.remove(index);
+        Ok(())
+    } else {
+        Err("Transaction not found in mempool".to_string())
+    }
+}
+
 
 pub fn compute_transaction_hash(
     tx: &Transaction

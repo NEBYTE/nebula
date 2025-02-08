@@ -13,11 +13,14 @@ pub fn produce_block(
     consensus_engine: &mut ConsensusEngine,
     signing_key: &SigningKey
 ) -> Result<Block, String> {
-    let transactions = consensus_engine.mempool.drain(..).collect::<Vec<_>>();
+    let mut mempool_lock = consensus_engine.mempool.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut chain_lock = consensus_engine.chain.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    let transactions = mempool_lock.drain(..).collect::<Vec<_>>();
     let merkle_root = compute_merkle_root(&transactions);
 
     let verifying_key = signing_key.verifying_key();
-    let parent_hash = consensus_engine.chain.last().map(|blk| hash_block(blk)).unwrap_or([0u8; 32]);
+    let parent_hash = chain_lock.last().map(|blk| hash_block(blk)).unwrap_or([0u8; 32]);
 
     let mut header = BlockHeader {
         parent_hash,
@@ -31,7 +34,7 @@ pub fn produce_block(
     header.signature = sign_data(signing_key, &signable);
 
     let block = Block { header, transactions };
-    consensus_engine.chain.push(block.clone());
+    chain_lock.push(block.clone());
 
     Ok(block)
 }
@@ -50,7 +53,9 @@ pub fn validate_block(
     let pubkey = VerifyingKey::from_bytes(&pubkey_array)
         .map_err(|e| format!("Failed to create VerifyingKey: {}", e))?;
 
-    if !consensus_engine.validators.iter().any(|v| v.address == block.header.validator && v.active) {
+    let validators_lock = consensus_engine.validators.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    if !validators_lock.iter().any(|v| v.address == block.header.validator && v.active) {
         return Err("Block validator is not active".into());
     }
 
@@ -71,7 +76,6 @@ pub fn validate_block(
 
     Ok(())
 }
-
 pub fn compute_merkle_root(
     transactions: &[Transaction]
 ) -> [u8; 32] {

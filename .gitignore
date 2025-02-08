@@ -1,3 +1,5 @@
 /target
 /.idea
 /nebula_db
+/.cargo
+/*.tar.gz

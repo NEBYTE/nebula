@@ -8,6 +8,7 @@ use crate::core::governance::{
 };
 use crate::core::nervous::*;
 use crate::core::consensus::model::ConsensusEngine;
+use crate::core::consensus::transaction::cancel_transaction;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -19,6 +20,7 @@ pub enum CanisterFunctionPayload<'a> {
         consensus_engine: &'a mut ConsensusEngine,
         tx: Transaction,
     },
+
     Stake {
         staking_module: &'a mut StakingModule,
         consensus_engine: &'a mut ConsensusEngine,
@@ -71,6 +73,10 @@ pub enum CanisterFunctionPayload<'a> {
         governance: &'a mut Governance,
         proposal_id: u64,
     },
+    CancelTransfer {
+        consensus_engine: &'a mut ConsensusEngine,
+        tx_hash: String,
+    }
 }
 
 #[derive(Clone)]
@@ -109,6 +115,10 @@ impl Canister {
                     "Transaction executed: {} -> {} ({} tokens)",
                     tx.from, tx.to, tx.amount
                 ))
+            }
+            CanisterFunctionPayload::CancelTransfer { consensus_engine, tx_hash } => {
+                cancel_transaction(consensus_engine, tx_hash.clone())?;
+                Ok("Transacted cancelled!".to_string())
             }
             CanisterFunctionPayload::Stake {
                 staking_module,

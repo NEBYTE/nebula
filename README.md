@@ -12,7 +12,7 @@
 
 > **NOTE:** Nebula is still under heavy development. Expect bugs and frequent API changes.
 
-Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It uses **ed25519-dalek** for key management and transaction signing.
+Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
 
 ---
 
@@ -22,7 +22,8 @@ Nebula is a blockchain-based system that replicates ICP’s architecture—inclu
 - [Installation](#installation)
 - [Usage](#usage)
   - [Wallet Management](#wallet-management)
-  - [Transaction Processing (Direct and via Canisters)](#transaction-processing)
+  - [Transaction Processing](#transaction-processing)
+  - [Canister Transactions](#canister-transactions)
   - [Block Production](#block-production)
   - [Neuron Management](#neuron-management)
   - [Staking](#staking)
@@ -34,13 +35,13 @@ Nebula is a blockchain-based system that replicates ICP’s architecture—inclu
 
 ## Features
 
-- **Wallet Management:** Generate wallets with private keys, public keys, and blockchain-compatible addresses.
-- **Transaction Processing:** Build, sign, and submit transactions with dynamic fee and index calculation.
-- **Consensus Engine:** Validator selection, block production, and transaction verification.
-- **Governance:** Neuron-based proposals and voting.
-- **Nervous System:** Neuron creation, locking/unlocking, and stake delegation.
-- **Staking:** Secure staking and unstaking of tokens.
-- **Canisters:** Wrap functionality (e.g., transaction submission, staking) into canisters for modularity and secure isolation.
+- **Wallet Management** - Create and manage wallets with private/public keys and blockchain-compatible addresses.
+- **Transaction Processing** - Build, sign, and submit transactions securely.
+- **Consensus Engine** - Validator selection, block production, and transaction verification.
+- **Governance** - Neuron-based proposals and voting.
+- **Nervous System** - Neuron creation, locking/unlocking, and stake delegation.
+- **Staking** - Secure staking and unstaking of tokens.
+- **Canisters** - Modular execution of functions via on-chain canisters.
 
 ---
 
@@ -76,182 +77,119 @@ cargo run
 
 ### Wallet Management
 
-Create a wallet using the built-in function. The wallet returns a private key, a public key (as a VerifyingKey), and an address.
-
 ```rust
 use crate::core::api::v1::wallet::create_wallet;
 
-let (signing_key, public_key, address) = create_wallet();
-println!("Wallet created: {:x?}", address); // Shareable address
-println!("Public Key: {:?}", public_key);  // Safe to share
-println!("Private Key: {:?}", signing_key);  // DO NOT SHARE!
+// Create a new wallet
+let (signing_key, public_key, sender_address) = create_wallet();
+println!("Sender Wallet created: {:x?}", sender_address);
+
+let (_receiver_signing, receiver_public, receiver_address) = create_wallet();
+println!("Receiver Wallet created: {:x?}", receiver_address);
 ```
+
+---
 
 ### Transaction Processing
 
-#### Direct Transaction Creation
-
-The following example shows how to build, sign, and submit a transaction directly using the consensus engine (without a canister).
+#### Direct Transaction
 
 ```rust
-use crate::core::api::v1::transaction::{build_transaction, finalize_transaction, submit_transaction};
+use crate::core::api::v1::transaction::{build_transaction, finalize_transaction};
 use crate::core::types::TransactionType;
 
-// Assume consensus_engine is already initialized and sender/receiver ledger accounts exist.
-let amount = 50;
 let mut tx = build_transaction(
     &mut consensus_engine,
-    sender_address,    // sender's address
-    receiver_address,  // receiver's address
-    amount,
-    0,  // memo
-    0,  // nrc_memo
-    TransactionType::Transfer
-);
-finalize_transaction(&mut tx, &signing_key)?; // Signs the transaction
-submit_transaction(&mut consensus_engine, tx)?; // Submits to the mempool
+    sender_address.clone(),
+    receiver_address.clone(),
+    50,  // Amount
+    0,   // Memo
+    0,   // NRC Memo
+    TransactionType::Transfer,
+); 
+
+// above assumes ledger were made with the sufficient balance for the sender address.
+
+finalize_transaction(&mut tx, &signing_key).expect("Failed to finalize transaction");
 ```
 
-#### Transaction Submission via Canisters
+---
 
-Nebula allows you to wrap functionality in a canister. In the example below, we create a canister, initialize ledger accounts for sender and receiver, build and sign a transaction, then submit it via the canister.
+### Canister Transactions
 
 ```rust
-use crate::core::api::v1::transaction::{submit_transaction, build_transaction, finalize_transaction};
-use crate::core::api::v1::wallet::create_wallet;
 use crate::core::canister::canister::{Canister, CanisterFunctionPayload};
 use crate::core::canister::registry::CanisterRegistry;
-use crate::core::consensus::{ValidatorInfo};
-use crate::core::consensus::model::ConsensusEngine;
-use crate::core::nervous::NervousSystem;
-use crate::core::types::TransactionType;
 
-#[tokio::main]
-async fn main() {
-    // Create wallet for sender.
-    let (signing_key, public_key, address) = create_wallet();
-    println!("Wallet created: {:x?}", address);
+// Register a canister
+let mut canister_registry = CanisterRegistry::new();
+let canister = Canister::new("my_canister".to_string(), sender_address.clone());
+println!("Canister created with ID: {}", canister.canister_id);
 
-    // Create and register a canister.
-    let mut canister_registry = CanisterRegistry::new();
-    let canister_id = "my_canister".to_string();
-    let canister = Canister::new(canister_id.clone(), address.clone());
-    println!("Canister ID: {}", canister.canister_id);
-    canister_registry.register_canister(&canister_id, canister);
-    let mut registered_canister = match canister_registry.get_canister(&canister_id) {
-        Some(c) => c,
-        None => {
-            eprintln!("Canister '{}' not found", canister_id);
-            return;
-        }
-    };
-
-    // Use canister-based API to submit a transaction.
-    {
-        // Create a wallet for the receiver.
-        let (_signing_key1, public_key1, address1) = create_wallet();
-
-        // Initialize the Nervous System and Consensus Engine.
-        let nervous_system = NervousSystem::new();
-        let validators = vec![ValidatorInfo { address: address.clone(), active: true }];
-        let mut consensus_engine = ConsensusEngine::new(validators, nervous_system.neurons.clone());
-
-        // Initialize ledger accounts for sender and receiver.
-        consensus_engine.init_ledger(address.clone(), public_key, 100)
-            .expect("Failed to initialize sender ledger");
-        consensus_engine.init_ledger(address1.clone(), public_key1, 0)
-            .expect("Failed to initialize receiver ledger");
-
-        let amount = 50;
-        // Build and sign the transaction.
-        let mut tx = build_transaction(
-            &mut consensus_engine,
-            address.clone(),
-            address1.clone(),
-            amount,
-            0,
-            0,
-            TransactionType::Transfer
-        );
-        finalize_transaction(&mut tx, &signing_key)
-            .expect("Failed to sign the transaction");
-
-        // Create a transfer payload for the canister.
-        let transfer_payload = CanisterFunctionPayload::Transfer {
-            consensus_engine: &mut consensus_engine,
-            tx,
-        };
-
-        // Execute the transaction via the canister.
-        match registered_canister.execute_function(transfer_payload) {
-            Ok(msg) => println!("Successfully sent transfer: {}", msg),
-            Err(err) => eprintln!("Transfer failed: {}", err),
-        }
-    }
-}
+canister_registry.register_canister(&canister.canister_id, canister.clone());
 ```
+
+---
 
 ### Block Production
 
-After transactions are in the mempool, you can produce a block:
-
 ```rust
-use crate::core::consensus::block::produce_block;
+use crate::core::consensus::consensus::run_consensus_loop;
+use std::time::Duration;
 
-let block = produce_block(&mut consensus_engine, &signing_key)?;
-println!("Block produced with {} transactions", block.transactions.len());
-println!("Block timestamp: {}", block.header.timestamp);
+let target_cycle = Duration::from_secs(1 / 2); // 0.5s
+let signing_key_clone = signing_key.clone();
+let mut consensus_engine_clone = consensus_engine.clone(); // consensus_engine uses Arc<Mutex<T>>, everything is synchronized.
+
+tokio::spawn(async move {
+    run_consensus_loop(
+        &mut consensus_engine_clone,
+        &signing_key_clone,
+        target_cycle,
+    ).await;
+});
+println!("🚀 Blockchain node is running! Listening for transactions...");
 ```
+
+---
 
 ### Neuron Management
 
-Create a neuron for governance:
-
 ```rust
-use crate::core::nervous::neuron_handler::create_neuron;
+use crate::core::nervous::{create_neuron, NervousSystem};
 
-let neuron_id = create_neuron(&nervous_system, &signing_key, "Test Neuron".to_string(), 30)?;
-println!("Neuron created with id: {}", neuron_id);
+let mut nervous_system = NervousSystem::new();
+let neuron_id = create_neuron(&mut nervous_system, &signing_key, "John Doe".to_string(), 365)
+    .expect("Failed to create neuron");
+println!("Created Neuron with ID: {}", neuron_id);
 ```
+
+---
 
 ### Staking
 
-Stake tokens to a neuron:
-
 ```rust
-use crate::core::staking::staking_handler::{stake, unstake};
+use crate::core::staking::{stake, StakingModule};
 
-// init consensus_engine beforehand
-let mut staking_module = core::staking::staking_module::StakingModule::new(nervous_system.neurons.clone());
-stake(&mut staking_module, &mut consensus_engine, &signing_key, neuron_id, 50)?;
-println!("Staked 50 tokens to neuron {}", neuron_id);
+let mut staking_module = StakingModule::new(nervous_system.neurons.clone());
+stake(&mut staking_module, &mut consensus_engine, &signing_key, neuron_id, 500)
+    .expect("Failed to stake 500 tokens");
+println!("Staked 500 tokens to neuron {}", neuron_id);
 ```
+
+---
 
 ### Governance and Voting
 
-Submit a proposal and vote:
-
 ```rust
-use crate::core::governance::{proposal_handler::propose, voting::{vote, finalize}};
+use crate::core::governance::Governance;
 
-let governance = core::governance::Governance::new(nervous_system.neurons.clone());
-let proposal_id = propose(&governance, "Increase block size".to_string(), &signing_key, neuron_id)?;
-println!("Proposal created with id: {}", proposal_id);
-
-match vote(&governance, &signing_key, neuron_id, proposal_id, true, 10) {
-    Ok(_) => println!("Voted on proposal {}", proposal_id),
-    Err(e) => println!("Voting failed: {}", e),
-}
-
-let proposal_result = finalize(&governance, proposal_id)?;
-println!("Proposal finalized with result: {}", proposal_result);
+let mut governance_module = Governance::new(nervous_system.neurons.clone());
 ```
 
 ---
 
 ## Dependencies
-
-Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -270,3 +208,4 @@ hex = "0.4"
 ## License
 
 Distributed under the [GNU AGPLv3](https://choosealicense.com/licenses/agpl-3.0/) license.
+

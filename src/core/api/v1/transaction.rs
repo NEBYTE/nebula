@@ -17,12 +17,14 @@ pub fn build_transaction(
     tx_type: TransactionType,
 ) -> Transaction {
     let fee = amount / 100;
-    let index = consensus
-        .chain
-        .iter()
-        .map(|chain| chain.transactions.len())
-        .sum::<usize>() as u32
-        + consensus.mempool.len() as u32;
+
+    let chain_guard = consensus.chain.lock().unwrap();
+    let total_chain_txs: usize = chain_guard.iter().map(|block| block.transactions.len()).sum();
+
+    let mempool_guard = consensus.mempool.lock().unwrap();
+    let mempool_len = mempool_guard.len();
+
+    let index = total_chain_txs as u32 + mempool_len as u32;
 
     Transaction {
         hash: String::new(),
@@ -52,6 +54,13 @@ pub fn finalize_transaction(tx: &mut Transaction, signing_key: &SigningKey) -> R
     tx.signature = sign_data(signing_key, &serialized_tx);
 
     Ok(())
+}
+
+pub fn cancel_transaction(canister: &mut Canister, consensus_engine: &mut ConsensusEngine, tx_hash: String) -> Result<String, String> {
+    canister.execute_function(CanisterFunctionPayload::CancelTransfer {
+        consensus_engine,
+        tx_hash,
+    })
 }
 
 pub fn submit_transaction(

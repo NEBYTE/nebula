@@ -5,7 +5,7 @@ use crate::core::types::{Neuron, NeuronStatus};
 use crate::core::nervous::nervous_system::NervousSystem;
 
 pub fn create_neuron(
-    nervous_system: &NervousSystem,
+    nervous_system: &mut NervousSystem,
     caller: &SigningKey,
     name: String,
     dissolve_days: i64
@@ -48,7 +48,7 @@ pub fn create_neuron(
 }
 
 pub fn get_neuron(
-    nervous_system: &NervousSystem,
+    nervous_system: &mut NervousSystem,
     neuron_id: u64
 ) -> Option<Neuron> {
     let neurons = nervous_system.neurons.lock().unwrap();
@@ -56,7 +56,7 @@ pub fn get_neuron(
 }
 
 pub fn list_neurons(
-    nervous_system: &NervousSystem
+    nervous_system: &mut NervousSystem
 ) -> Vec<Neuron> {
     let neurons = nervous_system.neurons.lock().unwrap();
     neurons.values().cloned().collect()

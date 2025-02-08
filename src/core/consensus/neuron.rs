@@ -1,5 +1,5 @@
 use crate::core::consensus::model::ConsensusEngine;
-use crate::core::types::{Address};
+use crate::core::types::Address;
 
 pub fn delegate_stake(
     consensus_engine: &mut ConsensusEngine,
@@ -8,16 +8,19 @@ pub fn delegate_stake(
 ) -> Result<(), String> {
     let mut neurons = consensus_engine.neurons.lock().unwrap();
 
-    let validator_list: Vec<Address> = neurons.values()
-        .filter_map(|n| n.validator.clone())
-        .collect();
-
     let neuron = neurons.get_mut(&neuron_id).ok_or("Neuron not found")?;
 
-    if !validator_list.contains(&validator) {
+    let validators_lock = consensus_engine.validators.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    let is_valid_validator = validators_lock
+        .iter()
+        .any(|v| v.address == validator);
+
+    if !is_valid_validator {
         return Err("Validator not found or inactive".into());
     }
 
-    neuron.validator = Some(validator);
+    neuron.validator = Some(validator.clone());
+
     Ok(())
 }
