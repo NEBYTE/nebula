@@ -6,11 +6,13 @@
 
 # Nebula (Early Alpha Release v0.1.0-pre.alpha.3)
 
-[![Maintainer](https://img.shields.io/badge/maintainer-rustyspottedcatt-blue)](https://github.com/rustyspottedcatt)
+[![Maintainer](https://img.shields.io/badge/maintainer-NEBYTE-blue)](https://github.com/rustyspottedcatt)
 [![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-GNU_AGPLv3-blue)](https://choosealicense.com/licenses/agpl-3.0/)
 
-> **NOTE:** Nebula is still under heavy development. Expect bugs and frequent API changes.
+> [!NOTE]
+> Nebula is still under heavy development. Expect bugs and frequent API changes.
+> 
 
 Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
 
