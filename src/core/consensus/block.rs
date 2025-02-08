@@ -8,6 +8,7 @@ use chrono::Utc;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use bincode;
 use hex;
+use crate::core::consensus::math::consensus_probability;
 
 pub fn produce_block(
     consensus_engine: &mut ConsensusEngine,
@@ -20,6 +21,8 @@ pub fn produce_block(
     let merkle_root = compute_merkle_root(&transactions);
 
     let verifying_key = signing_key.verifying_key();
+    let validator_address = hex::encode(verifying_key.to_bytes());
+
     let parent_hash = chain_lock.last().map(|blk| hash_block(blk)).unwrap_or([0u8; 32]);
 
     let mut header = BlockHeader {
@@ -35,6 +38,40 @@ pub fn produce_block(
 
     let block = Block { header, transactions };
     chain_lock.push(block.clone());
+
+    let neurons_lock = consensus_engine.neurons.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut total_stake: u64 = 0;
+    let mut validator_stake: u64 = 0;
+
+    for neuron in neurons_lock.values() {
+        total_stake += neuron.staked_amount;
+        if let Some(ref val_addr) = neuron.validator {
+            if val_addr == &validator_address {
+                validator_stake += neuron.staked_amount;
+            }
+        }
+    }
+
+    drop(neurons_lock);
+
+    if total_stake > 0 {
+        let prob = consensus_probability(validator_stake, total_stake);
+        println!(
+            "Validator {} has stake {} out of total {} => probability: {:.4}",
+            validator_address, validator_stake, total_stake, prob
+        );
+
+        const BLOCK_REWARD: u64 = 10;
+        const REWARD_MULTIPLIER: f64 = 1.0;
+        let reward_float = REWARD_MULTIPLIER * (validator_stake as f64 / total_stake as f64) * (BLOCK_REWARD as f64);
+        let reward: u64 = reward_float.round() as u64;
+
+        let mut ledger_lock = consensus_engine.ledger.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(account) = ledger_lock.get_mut(&validator_address) {
+            account.balance += reward;
+            println!("Validator {} rewarded with {} tokens", validator_address, reward);
+        }
+    }
 
     Ok(block)
 }

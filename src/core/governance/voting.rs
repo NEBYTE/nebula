@@ -1,5 +1,6 @@
 use std::sync::{Arc};
 use ed25519_dalek::SigningKey;
+use nebula::core::consensus::math::voting_power;
 use crate::core::types::{Vote, VotingNeuron, VotingStatus};
 use crate::core::governance::governance::Governance;
 
@@ -44,7 +45,7 @@ pub fn vote(
 
             proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
 
-            let effective_stake = (stake as f64 * neuron.bonus_multiplier) as u64;
+            let effective_stake = voting_power(stake, neuron.bonus_multiplier);
             if vote_for {
                 proposal.tally.yes += effective_stake;
             } else {
@@ -81,7 +82,10 @@ pub fn finalize(
     while let Some(mut proposal) = heap.pop() {
         if proposal.id == proposal_id {
             proposal.status = VotingStatus::Terminated;
-            finalized = Some(proposal.tally.yes > proposal.tally.no);
+
+            let outcome = governance.compute_voting_outcome(&proposal);
+            finalized = Some(outcome > 0);
+
             break;
         } else {
             temp.push(proposal);

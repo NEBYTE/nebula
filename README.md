@@ -4,7 +4,7 @@
   <img src="https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOWR3z3yuKt6z8SiwMQpPjTFX1mVLHuAaolWbN" alt="Nebula Logo">
 </picture>
 
-# Nebula (Early Alpha Release v0.1.0-pre.alpha.3)
+# Nebula (Early Alpha Release v0.1.0-pre.alpha.4)
 
 [![Maintainer](https://img.shields.io/badge/maintainer-NEBYTE-blue)](https://github.com/rustyspottedcatt)
 [![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
@@ -21,6 +21,7 @@ Nebula is a blockchain-based system that replicates ICP’s architecture—inclu
 ## Table of Contents
 
 - [Features](#features)
+- [Whitepaper](#whitepaper)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Wallet Management](#wallet-management)
@@ -44,6 +45,13 @@ Nebula is a blockchain-based system that replicates ICP’s architecture—inclu
 - **Nervous System** - Neuron creation, locking/unlocking, and stake delegation.
 - **Staking** - Secure staking and unstaking of tokens.
 - **Canisters** - Modular execution of functions via on-chain canisters.
+
+---
+## Whitepaper
+
+[Whitepaper Link](https://whitepapersonline.com/en/whitepaper/nebula-a-decentralized-open-source-blockchain-for-enhanced-governance)
+
+[Nebula - Whitepaper.pdf](https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOt7keFEmhXfpZyIEg8JDTAw5LFkaVmMbloc2u)
 
 ---
 
@@ -142,14 +150,15 @@ use std::time::Duration;
 let target_cycle = Duration::from_secs(1 / 2); // 0.5s
 let signing_key_clone = signing_key.clone();
 let mut consensus_engine_clone = consensus_engine.clone(); // consensus_engine uses Arc<Mutex<T>>, everything is synchronized.
+let mut staking_module_clone = staking_module.clone();
 
 tokio::spawn(async move {
     run_consensus_loop(
         &mut consensus_engine_clone,
+        &mut staking_module_clone, // staking_module is required because each block calls distribute staking rewards.
         &signing_key_clone,
-        target_cycle,
     ).await;
-});
+}); // Target cycle: 0.5s
 println!("🚀 Blockchain node is running! Listening for transactions...");
 ```
 

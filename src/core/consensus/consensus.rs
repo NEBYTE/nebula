@@ -5,11 +5,19 @@ use crate::core::consensus::validator::select_next_validator;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use tokio::time::{sleep, Duration, Instant};
 use hex;
+use nebula::core::staking::StakingModule;
+use crate::core::staking::distribute_rewards;
+
 pub async fn run_consensus_loop(
     consensus_engine: &mut ConsensusEngine,
+    staking_module: &mut StakingModule,
     signing_key: &SigningKey,
-    target_cycle: Duration,
 ) {
+    let target_cycle = Duration::from_millis(500);
+
+    const REWARD_POOL: u64 = 50;
+    const ANNUAL_YIELD_PERCENT: f64 = 5.0;
+
     loop {
         let cycle_start = Instant::now();
 
@@ -26,6 +34,8 @@ pub async fn run_consensus_loop(
                             block.transactions.len(),
                             block.header.timestamp
                         );
+
+                        distribute_rewards(&mut staking_module.clone(), REWARD_POOL, ANNUAL_YIELD_PERCENT);
                     }
                     Err(err) => {
                         eprintln!("Block production error: {}", err);

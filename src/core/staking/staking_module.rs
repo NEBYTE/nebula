@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use crate::core::types::Neuron;
 
+#[derive(Clone)]
 pub struct StakingModule {
     pub neurons: Arc<Mutex<HashMap<u64, Neuron>>>,
 }

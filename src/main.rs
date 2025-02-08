@@ -55,16 +55,15 @@ async fn main() {
    stake(&mut staking_module, &mut consensus_engine, &signing_key, neuron_id, 500).expect("Failed to stake 500 tokens");
    delegate_stake(&mut consensus_engine, neuron_id, sender_address.clone()).expect("Failed to delegate stake to neuron");
 
-   let target_cycle = Duration::from_secs(1/2);
-
    let signing_key_clone = signing_key.clone();
    let mut consensus_engine_clone = consensus_engine.clone();
+   let mut staking_module_clone = staking_module.clone();
 
    tokio::spawn(async move {
       run_consensus_loop(
          &mut consensus_engine_clone,
+         &mut staking_module_clone,
          &signing_key_clone,
-         target_cycle,
       ).await;
    });
 

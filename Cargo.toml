@@ -1,6 +1,6 @@
 [package]
 name = "nebula"
-version = "0.1.0-pre.alpha.3"
+version = "0.1.0-pre.alpha.4"
 edition = "2024"
 authors = ["NEBYTE contact@nebula-protocol.com"]
 description = "Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It uses ed25519-dalek for key management and transaction signing."
