@@ -51,7 +51,7 @@ Nebula is a blockchain-based system that replicates ICP’s architecture—inclu
 
 [Whitepaper Link](https://whitepapersonline.com/en/whitepaper/nebula-a-decentralized-open-source-blockchain-for-enhanced-governance)
 
-[Nebula - Whitepaper.pdf](https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOt7keFEmhXfpZyIEg8JDTAw5LFkaVmMbloc2u)
+[Nebula - Whitepaper.pdf](https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyO0uPtcuIgO5dR7MSuQXNazqoA6bVipTyxmHfC)
  
 ---
 
