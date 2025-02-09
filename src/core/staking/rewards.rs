@@ -7,14 +7,16 @@ pub fn distribute_rewards(
     annual_yield_percent: f64,
 ) {
     let mut neurons = staking_module.neurons.lock().unwrap_or_else(|e| e.into_inner());
-    let total_staked = neurons.values().map(|n| n.staked_amount).sum();
+    let total_staked: u64 = neurons.values().map(|n| n.staked_amount).sum();
 
     if total_staked == 0 {
         return;
     }
 
+    let total_staked_f64 = total_staked as f64;
+
     for neuron in neurons.values_mut() {
-        let ratio = neuron.staked_amount as f64 / total_staked as f64;
+        let ratio = neuron.staked_amount as f64 / total_staked_f64;
         let maturity_bonus = 1.0 + (neuron.maturity as f64 / 100.0);
         let pool_reward = (reward_pool as f64 * ratio) * maturity_bonus;
 

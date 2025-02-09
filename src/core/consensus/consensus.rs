@@ -1,12 +1,12 @@
 use crate::core::consensus::block::produce_block;
 use crate::core::consensus::model::ConsensusEngine;
 use crate::core::consensus::validator::select_next_validator;
+use crate::core::staking::StakingModule;
+use crate::core::staking::distribute_rewards;
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use tokio::time::{sleep, Duration, Instant};
 use hex;
-use nebula::core::staking::StakingModule;
-use crate::core::staking::distribute_rewards;
 
 pub async fn run_consensus_loop(
     consensus_engine: &mut ConsensusEngine,

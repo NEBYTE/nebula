@@ -1,8 +1,9 @@
-use std::sync::{Arc};
-use ed25519_dalek::SigningKey;
-use nebula::core::consensus::math::voting_power;
+use crate::core::consensus::math::voting_power;
 use crate::core::types::{Vote, VotingNeuron, VotingStatus};
 use crate::core::governance::governance::Governance;
+
+use std::sync::{Arc};
+use ed25519_dalek::SigningKey;
 
 pub fn vote(
     governance: &Governance,
