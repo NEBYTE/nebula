@@ -12,9 +12,9 @@
 
 > [!NOTE]
 > Nebula is still under heavy development. Expect bugs and frequent API changes.
-> 
+>
 
-Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
+Nebula is a blockchain-based system that features a governance model with neurons, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
 
 ---
 
