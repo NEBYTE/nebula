@@ -11,7 +11,7 @@
 [![License](https://img.shields.io/badge/License-GNU_AGPLv3-blue)](https://choosealicense.com/licenses/agpl-3.0/)
 
 > [!NOTE]
-> Nebula is still under heavy development. Expect bugs and frequent API changes.
+> Nebula is a personal, non-commercial learning project inspired by ICP's architecture. It is not an official ICP project, nor is it intended for release as a competing cryptocurrency.
 >
 
 Nebula is a blockchain-based system that features a governance model with neurons, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
