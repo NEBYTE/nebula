@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use parking_lot::Mutex;
 use ed25519_dalek::SigningKey;
+use rocksdb::DB;
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use serde::de::Error as DeError;
 pub type Address = String;
@@ -45,7 +48,7 @@ pub enum Vote {
     No,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VotingNeuron {
     pub name: String,
     pub id: u64,
@@ -73,7 +76,6 @@ where
 pub struct Neuron {
     #[serde(serialize_with = "serialize_signing_key", deserialize_with = "deserialize_signing_key")]
     pub private_address: Arc<SigningKey>,
-
     pub address: Address,
     pub name: String,
     pub visibility: bool,
@@ -148,4 +150,70 @@ pub struct BlockHeader {
 pub struct Block {
     pub header: BlockHeader,
     pub transactions: Vec<Transaction>,
+}
+
+#[derive(Debug)]
+pub struct MutexWrapper<T: ?Sized>(pub Mutex<T>);
+
+impl<T> MutexWrapper<T> {
+    pub fn new(inner: T) -> Self {
+        MutexWrapper(Mutex::new(inner))
+    }
+}
+
+impl<T: ?Sized + Serialize> Serialize for MutexWrapper<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let lock = self.0.lock();
+        lock.serialize(serializer)
+    }
+}
+
+impl<'de, T: ?Sized + Deserialize<'de>> Deserialize<'de> for MutexWrapper<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let data = T::deserialize(deserializer)?;
+        Ok(MutexWrapper(Mutex::new(data)))
+    }
+}
+
+impl<T: ?Sized> Deref for MutexWrapper<T> {
+    type Target = Mutex<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: ?Sized> DerefMut for MutexWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Clone)]
+pub struct DbWrapper(pub Arc<DB>);
+
+impl Default for DbWrapper {
+    fn default() -> Self {
+        DbWrapper(Arc::new(DB::open_default("path_to_db").expect("Failed to open RocksDB")))
+    }
+}
+
+impl Deref for DbWrapper {
+    type Target = DB;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for DbWrapper {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        Arc::get_mut(&mut self.0).expect("Failed to get mutable reference")
+    }
 }

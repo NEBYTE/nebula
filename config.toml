@@ -1,0 +1,32 @@
+[node1]
+name = "NebulaNode1"
+port = 30333
+initial_balance = 1000
+db_path = "data/nodes/nebula_storage_node1"
+data_center_owner = "Owner A"
+fiber_state = "Operational"
+location = "Location A"
+node_provider = "Provider A"
+status = "active"
+node_provider_id = "provider-id-001"
+node_operator_id = "operator-id-001"
+subnet_id = "subnet-001"
+ip_address = "127.0.0.1"
+
+[node2]
+name = "NebulaNode2"
+port = 30334
+initial_balance = 1000
+db_path = "data/nodes/nebula_storage_node2"
+data_center_owner = "Owner B"
+fiber_state = "Operational"
+location = "Location B"
+node_provider = "Provider B"
+status = "active"
+node_provider_id = "provider-id-002"
+node_operator_id = "operator-id-002"
+subnet_id = "subnet-002"
+ip_address = "127.0.0.1"
+
+[network]
+bootstrap_nodes = ["127.0.0.1:30333", "127.0.0.1:30334"]

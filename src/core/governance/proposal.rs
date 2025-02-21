@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 use chrono::{DateTime, Duration, Utc};
 use std::cmp::Ordering;
+use serde::{Deserialize, Serialize};
 use crate::core::types::{VotingStatus, VotingNeuron};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Tally {
     pub yes: u64,
     pub no: u64,
     pub total: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Proposal {
     pub id: u64,
     pub topic: String,

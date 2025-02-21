@@ -1,6 +1,6 @@
 [package]
 name = "nebula"
-version = "0.1.0-pre.alpha.4"
+version = "1.0.0"
 edition = "2024"
 authors = ["NEBYTE contact@nebula-protocol.com"]
 description = "Nebula is a blockchain-based system that replicates ICP’s architecture—including neurons, governance, canisters, transactions, and staking. It uses ed25519-dalek for key management and transaction signing."
@@ -11,12 +11,15 @@ repository = "https://github.com/NEBYTE/nebula"
 [dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "full"] }
 bincode = "1.3"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 ed25519-dalek = { version = "2", features = ["rand_core", "serde"]} 
 rand = "0.8"
 chrono = { version = "0.4.39", features = ["serde"]}
 sha2 = "0.10.8"
 hex = "0.4.3"
+rocksdb = "0.23.0"
+config = "0.15.8"
+parking_lot = {version = "0.12.0", features = ["deadlock_detection"]}
 
 [package.metadata.deb]
 maintainer = "NEBYTE contact@nebula-protocol.com"

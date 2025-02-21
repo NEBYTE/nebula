@@ -14,8 +14,8 @@ pub fn produce_block(
     consensus_engine: &mut ConsensusEngine,
     signing_key: &SigningKey
 ) -> Result<Block, String> {
-    let mut mempool_lock = consensus_engine.mempool.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    let mut chain_lock = consensus_engine.chain.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut mempool_lock = consensus_engine.mempool.lock();
+    let mut chain_lock = consensus_engine.chain.lock();
 
     let transactions = mempool_lock.drain(..).collect::<Vec<_>>();
     let merkle_root = compute_merkle_root(&transactions);
@@ -39,7 +39,7 @@ pub fn produce_block(
     let block = Block { header, transactions };
     chain_lock.push(block.clone());
 
-    let neurons_lock = consensus_engine.neurons.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let neurons_lock = consensus_engine.neurons.lock();
     let mut total_stake: u64 = 0;
     let mut validator_stake: u64 = 0;
 
@@ -53,26 +53,25 @@ pub fn produce_block(
     }
 
     drop(neurons_lock);
+    drop(chain_lock);
+    drop(mempool_lock);
+
 
     if total_stake > 0 {
         let prob = consensus_probability(validator_stake, total_stake);
-        println!(
-            "Validator {} has stake {} out of total {} => probability: {:.4}",
-            validator_address, validator_stake, total_stake, prob
-        );
-
         const BLOCK_REWARD: u64 = 10;
         const REWARD_MULTIPLIER: f64 = 1.0;
         let reward_float = REWARD_MULTIPLIER * (validator_stake as f64 / total_stake as f64) * (BLOCK_REWARD as f64);
         let reward: u64 = reward_float.round() as u64;
 
-        let mut ledger_lock = consensus_engine.ledger.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut ledger_lock = consensus_engine.ledger.lock();
         if let Some(account) = ledger_lock.get_mut(&validator_address) {
             account.balance += reward;
             println!("Validator {} rewarded with {} tokens", validator_address, reward);
         }
     }
 
+    consensus_engine.persist_state();
     Ok(block)
 }
 
@@ -80,37 +79,40 @@ pub fn validate_block(
     consensus_engine: &mut ConsensusEngine,
     block: &Block,
 ) -> Result<(), String> {
-    let pubkey_bytes = hex::decode(&block.header.validator)
-    .map_err(|e| format!("Invalid hex address: {}", e))?;
+    {
+        let pubkey_bytes = hex::decode(&block.header.validator)
+            .map_err(|e| format!("Invalid hex address: {}", e))?;
 
-    let pubkey_array: [u8; 32] = pubkey_bytes
-        .try_into()
-        .map_err(|_| "Invalid length: Expected 32 bytes".to_string())?;
+        let pubkey_array: [u8; 32] = pubkey_bytes
+            .try_into()
+            .map_err(|_| "Invalid length: Expected 32 bytes".to_string())?;
 
-    let pubkey = VerifyingKey::from_bytes(&pubkey_array)
-        .map_err(|e| format!("Failed to create VerifyingKey: {}", e))?;
+        let pubkey = VerifyingKey::from_bytes(&pubkey_array)
+            .map_err(|e| format!("Failed to create VerifyingKey: {}", e))?;
 
-    let validators_lock = consensus_engine.validators.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let validators_lock = consensus_engine.validators.lock();
 
-    if !validators_lock.iter().any(|v| v.address == block.header.validator && v.active) {
-        return Err("Block validator is not active".into());
+        if !validators_lock.iter().any(|v| v.address == block.header.validator && v.active) {
+            return Err("Block validator is not active".into());
+        }
+
+        let signable = serialize_header_for_signing(&block.header)?;
+        if !verify_data(&pubkey, &signable, &block.header.signature) {
+            return Err("Invalid block signature".into());
+        }
+
+        let computed_merkle_root = compute_merkle_root(&block.transactions);
+        if block.header.merkle_root != computed_merkle_root {
+            return Err("Merkle root mismatch".into());
+        }
+
+        let now = Utc::now().timestamp() as u64;
+        if block.header.timestamp > now + 600 {
+            return Err("Block timestamp is too far in the future".into());
+        }
     }
 
-    let signable = serialize_header_for_signing(&block.header)?;
-    if !verify_data(&pubkey, &signable, &block.header.signature) {
-        return Err("Invalid block signature".into());
-    }
-
-    let computed_merkle_root = compute_merkle_root(&block.transactions);
-    if block.header.merkle_root != computed_merkle_root {
-        return Err("Merkle root mismatch".into());
-    }
-
-    let now = Utc::now().timestamp() as u64;
-    if block.header.timestamp > now + 600 {
-        return Err("Block timestamp is too far in the future".into());
-    }
-
+    consensus_engine.persist_state();
     Ok(())
 }
 pub fn compute_merkle_root(

@@ -18,10 +18,10 @@ pub fn build_transaction(
 ) -> Transaction {
     let fee = amount / 100;
 
-    let chain_guard = consensus.chain.lock().unwrap();
+    let chain_guard = consensus.chain.lock();
     let total_chain_txs: usize = chain_guard.iter().map(|block| block.transactions.len()).sum();
 
-    let mempool_guard = consensus.mempool.lock().unwrap();
+    let mempool_guard = consensus.mempool.lock();
     let mempool_len = mempool_guard.len();
 
     let index = total_chain_txs as u32 + mempool_len as u32;

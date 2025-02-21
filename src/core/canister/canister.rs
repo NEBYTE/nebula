@@ -1,4 +1,4 @@
-use crate::core::types::{Address, Transaction};
+use crate::core::types::{Address, MutexWrapper, Transaction, DbWrapper};
 use crate::core::consensus::*;
 use crate::core::staking::*;
 use crate::core::governance::{
@@ -11,8 +11,10 @@ use crate::core::consensus::model::ConsensusEngine;
 use crate::core::consensus::transaction::cancel_transaction;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use ed25519_dalek::SigningKey;
+use rocksdb::DB;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub enum CanisterFunctionPayload<'a> {
@@ -20,8 +22,8 @@ pub enum CanisterFunctionPayload<'a> {
         consensus_engine: &'a mut ConsensusEngine,
         tx: Transaction,
     },
-
     Stake {
+        nervous_system: &'a mut NervousSystem,
         staking_module: &'a mut StakingModule,
         consensus_engine: &'a mut ConsensusEngine,
         signing_key: &'a SigningKey,
@@ -29,6 +31,7 @@ pub enum CanisterFunctionPayload<'a> {
         amount: u64,
     },
     Unstake {
+        nervous_system: &'a mut NervousSystem,
         staking_module: &'a mut StakingModule,
         consensus_engine: &'a mut ConsensusEngine,
         signing_key: &'a SigningKey,
@@ -79,16 +82,18 @@ pub enum CanisterFunctionPayload<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Canister {
-    pub state: Arc<Mutex<HashMap<String, String>>>,
+    pub state: Arc<MutexWrapper<HashMap<String, String>>>,
     pub canister_id: String,
     pub controller: Address,
     pub module_hash: String,
+    #[serde(skip)]
+    pub db: DbWrapper,
 }
 
 impl Canister {
-    pub fn new(canister_id: String, controller: Address) -> Self {
+    pub fn new(canister_id: String, controller: Address, db: Arc<DB>) -> Self {
         let mut hasher = Sha256::new();
         hasher.update(canister_id.as_bytes());
         hasher.update(controller.to_string().as_bytes());
@@ -97,10 +102,11 @@ impl Canister {
         let module_hash = format!("{:x}", hash_result);
 
         Self {
-            state: Arc::new(Mutex::new(HashMap::new())),
+            state: Arc::new(MutexWrapper::new(HashMap::new())),
             canister_id,
             controller,
             module_hash,
+            db: DbWrapper(db),
         }
     }
 
@@ -121,26 +127,28 @@ impl Canister {
                 Ok("Transacted cancelled!".to_string())
             }
             CanisterFunctionPayload::Stake {
+                nervous_system,
                 staking_module,
                 consensus_engine,
                 signing_key,
                 neuron_id,
                 amount,
             } => {
-                stake(staking_module, consensus_engine, signing_key, neuron_id, amount)?;
+                stake(nervous_system, staking_module, consensus_engine, signing_key, neuron_id, amount)?;
                 Ok(format!(
                     "Stake executed: {} -> {} tokens staked",
                     neuron_id, amount
                 ))
             }
             CanisterFunctionPayload::Unstake {
+                nervous_system,
                 staking_module,
                 consensus_engine,
                 signing_key,
                 neuron_id,
                 amount,
             } => {
-                unstake(staking_module, consensus_engine, signing_key, neuron_id, amount)?;
+                unstake(nervous_system, staking_module, consensus_engine, signing_key, neuron_id, amount)?;
                 Ok(format!(
                     "Unstake executed: Neuron {} -> {} tokens unstaked",
                     neuron_id, amount
@@ -223,17 +231,30 @@ impl Canister {
         }
     }
 
+    pub fn persist_state(&self) {
+        let state = self.state.lock();
+        let serialized = bincode::serialize(&*state).unwrap();
+        let key = format!("canister_state_{}", self.canister_id);
+        self.db.put(key.as_bytes(), serialized).unwrap();
+    }
+
     pub fn store_state(&mut self, key: String, value: String) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.lock();
         state.insert(key, value);
+
+        drop(state);
+        self.persist_state();
     }
 
-    pub fn load_state(&self, key: &str) -> Option<String> {
-        let state = self.state.lock().unwrap();
-        state.get(key).cloned()
+    pub fn load_state(&mut self) {
+        let key = format!("canister_state_{}", self.canister_id);
+        if let Ok(Some(data)) = self.db.get(key.as_bytes()) {
+            let loaded_state: HashMap<String, String> = bincode::deserialize(&data).unwrap();
+            *self.state.lock() = loaded_state;
+        }
     }
 
-    pub fn canister_info(&self) -> String {
-        format!("Canister ID: {}, Controller: {}, Module Has: {}", self.canister_id, self.controller, self.module_hash)
+    pub fn canister_info(&mut self) -> String {
+        format!("Canister ID: {}, Controller: {}, Module Hash: {}", self.canister_id, self.controller, self.module_hash)
     }
 }

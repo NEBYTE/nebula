@@ -3,12 +3,14 @@ use crate::core::consensus::model::ConsensusEngine;
 use crate::core::consensus::validator::select_next_validator;
 use crate::core::staking::StakingModule;
 use crate::core::staking::distribute_rewards;
+use crate::core::nervous::NervousSystem;
 
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use tokio::time::{sleep, Duration, Instant};
 use hex;
 
 pub async fn run_consensus_loop(
+    nervous_system: &mut NervousSystem,
     consensus_engine: &mut ConsensusEngine,
     staking_module: &mut StakingModule,
     signing_key: &SigningKey,
@@ -25,27 +27,22 @@ pub async fn run_consensus_loop(
             let verifying_key = VerifyingKey::from(signing_key);
             let my_address = hex::encode(verifying_key.to_bytes());
 
-
             if next_validator == my_address {
                 match produce_block(consensus_engine, signing_key) {
                     Ok(block) => {
                         println!(
-                            "Block produced: {} transactions, timestamp: {}",
+                            "⚡ Block produced: {} transactions, timestamp: {}",
                             block.transactions.len(),
                             block.header.timestamp
                         );
 
-                        distribute_rewards(&mut staking_module.clone(), REWARD_POOL, ANNUAL_YIELD_PERCENT);
+                        distribute_rewards(nervous_system, &mut staking_module.clone(), REWARD_POOL, ANNUAL_YIELD_PERCENT);
                     }
                     Err(err) => {
                         eprintln!("Block production error: {}", err);
                     }
                 }
-            } else {
-                println!("This node is NOT the selected validator. Skipping block production.");
             }
-        } else {
-            println!("No active validators found.");
         }
 
         let elapsed = cycle_start.elapsed();

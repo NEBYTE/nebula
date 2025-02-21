@@ -14,14 +14,14 @@ pub fn propose(
 ) -> Result<u64, String> {
     let now = Utc::now();
 
-    let neurons = governance.neurons.lock().unwrap();
+    let neurons = governance.neurons.lock();
     let neuron = neurons.get(&proposer_id).ok_or("Proposer does not own a neuron")?;
 
     if neuron.private_address != Arc::new(caller.clone()) {
         return Err("Caller does not own the neuron".to_string());
     }
 
-    let mut next_id = governance.next_id.lock().unwrap();
+    let mut next_id = governance.next_id.lock();
     let proposal_id = *next_id;
     *next_id += 1;
     drop(next_id);
@@ -51,6 +51,11 @@ pub fn propose(
 
     let mut heap = governance.proposals.write().unwrap();
     heap.push(proposal);
+
+    drop(heap);
+    drop(neurons);
+
+    governance.persist_proposals();
     Ok(proposal_id)
 }
 

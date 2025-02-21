@@ -13,10 +13,12 @@ pub fn create_neuron(
     let now = Utc::now();
     let neuron_id;
     {
-        let mut id_counter = nervous_system.next_id.lock().map_err(|_| "Mutex poisoned")?;
+        let mut id_counter = nervous_system.next_id.lock();
         neuron_id = *id_counter;
         *id_counter += 1;
     }
+
+    let validator_address = hex::encode(VerifyingKey::from(caller).to_bytes());
 
     let neuron = Neuron {
         name,
@@ -38,12 +40,15 @@ pub fn create_neuron(
         total_bonus: 0,
         is_genesis: false,
         is_known_neuron: false,
-        validator: None,
+        validator: Some(validator_address.clone()),
     };
 
-    let mut neurons = nervous_system.neurons.lock().map_err(|_| "Mutex poisoned")?;
-    neurons.insert(neuron_id, neuron);
+    {
+        let mut neurons = nervous_system.neurons.lock();
+        neurons.insert(neuron_id, neuron);
+    }
 
+    nervous_system.persist_neurons();
     Ok(neuron_id)
 }
 
@@ -51,13 +56,13 @@ pub fn get_neuron(
     nervous_system: &mut NervousSystem,
     neuron_id: u64
 ) -> Option<Neuron> {
-    let neurons = nervous_system.neurons.lock().unwrap();
+    let neurons = nervous_system.neurons.lock();
     neurons.get(&neuron_id).cloned()
 }
 
 pub fn list_neurons(
     nervous_system: &mut NervousSystem
 ) -> Vec<Neuron> {
-    let neurons = nervous_system.neurons.lock().unwrap();
+    let neurons = nervous_system.neurons.lock();
     neurons.values().cloned().collect()
 }

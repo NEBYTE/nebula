@@ -1,28 +1,24 @@
 <picture>
-  <source media="(prefers-color-scheme: light)" srcset="https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOWR3z3yuKt6z8SiwMQpPjTFX1mVLHuAaolWbN">
-  <source media="(prefers-color-scheme: dark)" srcset="https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOwMCPgf4f1Cjl2Pczaro3dH9SEtbyL4AKsVhF">
-  <img src="https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyOWR3z3yuKt6z8SiwMQpPjTFX1mVLHuAaolWbN" alt="Nebula Logo">
+  <source media="(prefers-color-scheme: light)" srcset="https://example.com/light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="https://example.com/dark.png">
+  <img src="https://example.com/light.png" alt="Nebula Logo">
 </picture>
 
-# Nebula (Early Alpha Release v0.1.0-pre.alpha.4)
+# Nebula (Early Alpha Release v1.0.0)
 
 [![Maintainer](https://img.shields.io/badge/maintainer-NEBYTE-blue)](https://github.com/rustyspottedcatt)
 [![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-1f425f.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-GNU_AGPLv3-blue)](https://choosealicense.com/licenses/agpl-3.0/)
 
-> [!NOTE]
-> Nebula is a personal, non-commercial learning project inspired by ICP's architecture. It is not an official ICP project, nor is it intended for release as a competing cryptocurrency.
->
-
-Nebula is a blockchain-based system that features a governance model with neurons, canisters, transactions, and staking. It utilizes **ed25519-dalek** for key management and transaction signing.
-
----
+Nebula is a blockchain-based system featuring wallet management, transaction processing, a consensus engine with staking, neuron-based governance, modular canister execution, and dynamic node registration. It is a personal, non-commercial learning project inspired by ICP's architecture and is not intended for production use.
 
 ## Table of Contents
 
 - [Features](#features)
 - [Whitepaper](#whitepaper)
 - [Installation](#installation)
+- [Configuration](#configuration)
+  - [config.toml](#configtoml)
 - [Usage](#usage)
   - [Wallet Management](#wallet-management)
   - [Transaction Processing](#transaction-processing)
@@ -31,36 +27,33 @@ Nebula is a blockchain-based system that features a governance model with neuron
   - [Neuron Management](#neuron-management)
   - [Staking](#staking)
   - [Governance and Voting](#governance-and-voting)
+  - [Node Registry](#node-registry)
 - [Dependencies](#dependencies)
 - [License](#license)
 
----
-
 ## Features
 
-- **Wallet Management** - Create and manage wallets with private/public keys and blockchain-compatible addresses.
-- **Transaction Processing** - Build, sign, and submit transactions securely.
-- **Consensus Engine** - Validator selection, block production, and transaction verification.
-- **Governance** - Neuron-based proposals and voting.
-- **Nervous System** - Neuron creation, locking/unlocking, and stake delegation.
-- **Staking** - Secure staking and unstaking of tokens.
-- **Canisters** - Modular execution of functions via on-chain canisters.
+- **Wallet Management**: Create and manage wallets with secure keys.
+- **Transaction Processing**: Build, sign, and submit transactions.
+- **Consensus Engine**: Validator selection, block production, and ledger management.
+- **Governance**: Neuron-based proposals and weighted voting.
+- **Nervous System**: Neuron creation, locking, and stake delegation.
+- **Staking**: Secure staking and unstaking of tokens via canisters.
+- **Canisters**: Modular execution of on-chain functions.
+- **Node Registry**: Dynamic node registration and configuration via a registry.
 
----
 ## Whitepaper
 
 [Whitepaper Link](https://whitepapersonline.com/en/whitepaper/nebula-a-decentralized-open-source-blockchain-for-enhanced-governance)
 
 [Nebula - Whitepaper.pdf](https://l7mozmkiwy.ufs.sh/f/HKemhjN71TyO0uPtcuIgO5dR7MSuQXNazqoA6bVipTyxmHfC)
- 
----
 
 ## Installation
 
 ### Prerequisites
 
-- Rust (latest stable)
-- Cargo package manager
+- Rust (latest stable) + Nightly
+- Cargo
 
 ### Clone the Repository
 
@@ -77,11 +70,71 @@ cargo build --release
 
 ### Run the Application
 
+For example, to run a node called node1:
+
 ```sh
-cargo run
+cargo run node1
 ```
 
----
+## Configuration
+
+Nebula uses a configuration file (`config.toml`) to set parameters for nodes and network settings.
+
+### config.toml
+
+```toml
+[node1]
+name = "NebulaNode1"
+port = 30333
+initial_balance = 1000
+db_path = "data/nodes/nebula_storage_node1"
+data_center_owner = "Owner A"
+fiber_state = "Operational"
+location = "Location A"
+node_provider = "Provider A"
+status = "active"
+node_provider_id = "provider-id-001"
+node_operator_id = "operator-id-001"
+subnet_id = "subnet-001"
+ip_address = "127.0.0.1"
+```
+
+### Example Production Usage:
+
+```toml
+[node1]
+name = "NebulaNode1"
+port = 30333
+initial_balance = 1000
+db_path = "data/nodes/nebula_storage_node1"
+data_center_owner = "Owner A"
+fiber_state = "Operational"
+location = "Location A"
+node_provider = "Provider A"
+status = "active"
+node_provider_id = "provider-id-001"
+node_operator_id = "operator-id-001"
+subnet_id = "subnet-001"
+ip_address = "127.0.0.1"
+
+[node2]
+name = "NebulaNode2"
+port = 30334
+initial_balance = 1000
+db_path = "data/nodes/nebula_storage_node2"
+data_center_owner = "Owner B"
+fiber_state = "Operational"
+location = "Location B"
+node_provider = "Provider B"
+status = "active"
+node_provider_id = "provider-id-002"
+node_operator_id = "operator-id-002"
+subnet_id = "subnet-002"
+ip_address = "127.0.0.1"
+
+[network]
+bootstrap_nodes = ["127.0.0.1:30333", "127.0.0.1:30334"]
+```
 
 ## Usage
 
@@ -89,134 +142,54 @@ cargo run
 
 ```rust
 use crate::core::api::v1::wallet::create_wallet;
-
-// Create a new wallet
-let (signing_key, public_key, sender_address) = create_wallet();
-println!("Sender Wallet created: {:x?}", sender_address);
-
-let (_receiver_signing, receiver_public, receiver_address) = create_wallet();
-println!("Receiver Wallet created: {:x?}", receiver_address);
+let wallet = create_wallet(db.clone());
+println!("Wallet created: {}", wallet.address);
 ```
 
----
-
-### Transaction Processing
-
-#### Direct Transaction
-
-```rust
-use crate::core::api::v1::transaction::{build_transaction, finalize_transaction};
-use crate::core::types::TransactionType;
-
-let mut tx = build_transaction(
-    &mut consensus_engine,
-    sender_address.clone(),
-    receiver_address.clone(),
-    50,  // Amount
-    0,   // Memo
-    0,   // NRC Memo
-    TransactionType::Transfer,
-); 
-
-// above assumes ledger were made with the sufficient balance for the sender address.
-
-finalize_transaction(&mut tx, &signing_key).expect("Failed to finalize transaction");
-```
-
----
-
-### Canister Transactions
+### Transaction Processing (Using Canisters)
 
 ```rust
 use crate::core::canister::canister::{Canister, CanisterFunctionPayload};
-use crate::core::canister::registry::CanisterRegistry;
-
-// Register a canister
-let mut canister_registry = CanisterRegistry::new();
-let canister = Canister::new("my_canister".to_string(), sender_address.clone());
-println!("Canister created with ID: {}", canister.canister_id);
-
-canister_registry.register_canister(&canister.canister_id, canister.clone());
+let mut canister = Canister::new("transaction_canister".to_string(), sender_address.clone(), db.clone());
+let result = canister.execute_function(CanisterFunctionPayload::Transfer { amount: 50, sender: sender_address, receiver: receiver_address });
+println!("Transaction result: {:?}", result);
 ```
 
----
-
-### Block Production
+### Staking (Using Canisters)
 
 ```rust
-use crate::core::consensus::consensus::run_consensus_loop;
-use std::time::Duration;
-
-let target_cycle = Duration::from_secs(1 / 2); // 0.5s
-let signing_key_clone = signing_key.clone();
-let mut consensus_engine_clone = consensus_engine.clone(); // consensus_engine uses Arc<Mutex<T>>, everything is synchronized.
-let mut staking_module_clone = staking_module.clone();
-
-tokio::spawn(async move {
-    run_consensus_loop(
-        &mut consensus_engine_clone,
-        &mut staking_module_clone, // staking_module is required because each block calls distribute staking rewards.
-        &signing_key_clone,
-    ).await;
-}); // Target cycle: 0.5s
-println!("🚀 Blockchain node is running! Listening for transactions...");
+let mut canister = Canister::new("staking_canister".to_string(), sender_address.clone(), db.clone());
+let result = canister.execute_function(CanisterFunctionPayload::Stake { neuron_id: 12345, amount: 500 });
+println!("Staking Result: {:?}", result);
 ```
 
----
-
-### Neuron Management
+### Unstaking (Using Canisters)
 
 ```rust
-use crate::core::nervous::{create_neuron, NervousSystem};
-
-let mut nervous_system = NervousSystem::new();
-let neuron_id = create_neuron(&mut nervous_system, &signing_key, "John Doe".to_string(), 365)
-    .expect("Failed to create neuron");
-println!("Created Neuron with ID: {}", neuron_id);
+let result = canister.execute_function(CanisterFunctionPayload::Unstake { neuron_id: 12345, amount: 200 });
+println!("Unstaking Result: {:?}", result);
 ```
 
----
-
-### Staking
+### Node Registry
 
 ```rust
-use crate::core::staking::{stake, StakingModule};
-
-let mut staking_module = StakingModule::new(nervous_system.neurons.clone());
-stake(&mut staking_module, &mut consensus_engine, &signing_key, neuron_id, 500)
-    .expect("Failed to stake 500 tokens");
-println!("Staked 500 tokens to neuron {}", neuron_id);
+use crate::core::node::{NodeRegistry, Node};
+let node_registry = NodeRegistry::new(db.clone());
+let node = Node {
+    data_center_owner: "Owner A".to_string(),
+    fiber_state: "Operational".to_string(),
+    dc_id: "node1".to_string(),
+    location: "Location A".to_string(),
+    node_provider: "Provider A".to_string(),
+    status: "active".to_string(),
+    node_provider_id: "provider-id-001".to_string(),
+    node_operator_id: "operator-id-001".to_string(),
+    subnet_id: "subnet-001".to_string(),
+    ip_address: "127.0.0.1".to_string(),
+};
+node_registry.register_node(node);
 ```
-
----
-
-### Governance and Voting
-
-```rust
-use crate::core::governance::Governance;
-
-let mut governance_module = Governance::new(nervous_system.neurons.clone());
-```
-
----
-
-## Dependencies
-
-```toml
-[dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "full"] }
-bincode = "1.3"
-serde = { version = "1.0", features = ["derive"] }
-ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
-rand = "0.8"
-chrono = { version = "0.4", features = ["serde"] }
-sha2 = "0.10"
-hex = "0.4"
-```
-
----
 
 ## License
 
 Distributed under the [GNU AGPLv3](https://choosealicense.com/licenses/agpl-3.0/) license.
-

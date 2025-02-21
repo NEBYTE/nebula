@@ -1,40 +1,50 @@
-use crate::core::canister::canister::{Canister, CanisterFunctionPayload};
+use crate::core::canister::canister::{Canister};
+use crate::core::types::{DbWrapper, MutexWrapper};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use rocksdb::DB;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CanisterRegistry {
-    canisters: Arc<Mutex<HashMap<String, Arc<Mutex<Canister>>>>>,
+    pub canisters: Arc<MutexWrapper<HashMap<String, Arc<MutexWrapper<Canister>>>>>,
+    #[serde(skip)]
+    pub db: DbWrapper,
 }
 
 impl CanisterRegistry {
-    pub fn new() -> Self {
+    pub fn new(db: Arc<DB>) -> Self {
+        let mut registry = HashMap::new();
+        let stored_canisters = db.iterator(rocksdb::IteratorMode::Start);
+        for item in stored_canisters {
+            let (key, value) = item.unwrap();
+            if key.starts_with(b"canister_") {
+                if let Ok(canister) = bincode::deserialize::<Canister>(&value) {
+                    registry.insert(String::from_utf8(key.to_vec()).unwrap(), Arc::new(MutexWrapper::new(canister)));
+                }
+            }
+        }
         Self {
-            canisters: Arc::new(Mutex::new(HashMap::new())),
+            canisters: Arc::new(MutexWrapper::new(registry)),
+            db: DbWrapper(db),
         }
     }
 
     pub fn register_canister(&mut self, canister_id: &String, canister: Canister) {
-        let mut registry = self.canisters.lock().unwrap();
-        registry.insert(canister_id.clone(), Arc::new(Mutex::new(canister)));
+        let mut registry = self.canisters.lock();
+        let serialized = bincode::serialize(&canister).unwrap();
+        let key = format!("canister_{}", canister_id);
+        self.db.put(key.as_bytes(), serialized).unwrap();
+        registry.insert(canister_id.clone(), Arc::new(MutexWrapper::new(canister)));
     }
 
     pub fn get_canister(&self, canister_id: &str) -> Option<Canister> {
-        let registry = self.canisters.lock().unwrap();
-        registry.get(canister_id).map(|arc_canister| {
-            let canister_guard = arc_canister.lock().unwrap();
-            (*canister_guard).clone()
-        })
-    }
-
-    pub fn execute_function<'a>(
-        &self,
-        canister_id: &str,
-        payload: CanisterFunctionPayload<'a>,
-    ) -> Result<String, String> {
-        let mut canister = self
-            .get_canister(canister_id)
-            .ok_or(format!("Canister '{}' not found", canister_id))?;
-
-        canister.execute_function(payload)
+        let key = format!("canister_{}", canister_id);
+        if let Ok(Some(data)) = self.db.get(key.as_bytes()) {
+            if let Ok(canister) = bincode::deserialize::<Canister>(&data) {
+                return Some(canister);
+            }
+        }
+        None
     }
 }

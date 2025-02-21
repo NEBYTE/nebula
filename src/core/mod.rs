@@ -8,3 +8,6 @@ pub mod governance;
 pub mod nervous;
 pub mod staking;
 pub mod types;
+pub mod wallet;
+
+pub mod network;

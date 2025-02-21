@@ -13,63 +13,67 @@ pub fn vote(
     vote_for: bool,
     stake: u64
 ) -> Result<(), String> {
-    let mut neurons = governance.neurons.lock().unwrap();
-    let neuron = neurons.get_mut(&neuron_id).ok_or("Proposer does not own a neuron")?;
+    {
+        let mut neurons = governance.neurons.lock();
+        let neuron = neurons.get_mut(&neuron_id).ok_or("Proposer does not own a neuron")?;
 
-    if neuron.private_address != Arc::new(caller.clone()) {
-        return Err("Caller does not own the neuron".to_string());
-    }
+        if neuron.private_address != Arc::new(caller.clone()) {
+            return Err("Caller does not own the neuron".to_string());
+        }
 
-    if neuron.staked_amount < stake {
-        return Err("Neuron does not have enough stake to vote".to_string())
-    }
+        if neuron.staked_amount < stake {
+            return Err("Neuron does not have enough stake to vote".to_string())
+        }
 
-    let mut heap = governance.proposals.write().unwrap();
-    let mut temp = Vec::new();
-    let mut found = None;
+        let mut heap = governance.proposals.write().unwrap();
+        let mut temp = Vec::new();
+        let mut found = None;
 
-    while let Some(mut proposal) = heap.pop() {
-        if proposal.id == proposal_id {
+        while let Some(mut proposal) = heap.pop() {
+            if proposal.id == proposal_id {
 
-            if proposal.votes_of_neurons.contains_key(&neuron_id) {
-                return Err("Neuron has already voted on this proposal".to_string());
-            }
+                if proposal.votes_of_neurons.contains_key(&neuron_id) {
+                    return Err("Neuron has already voted on this proposal".to_string());
+                }
 
 
-            let vote = if vote_for { Vote::Yes } else { Vote::No };
-            let voting_neuron = VotingNeuron {
-                name: neuron.name.clone(),
-                id: neuron.id,
-                vote,
-                private_address: Arc::new(caller.clone()),
-            };
+                let vote = if vote_for { Vote::Yes } else { Vote::No };
+                let voting_neuron = VotingNeuron {
+                    name: neuron.name.clone(),
+                    id: neuron.id,
+                    vote,
+                    private_address: Arc::new(caller.clone()),
+                };
 
-            proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
+                proposal.votes_of_neurons.insert(neuron_id, voting_neuron);
 
-            let effective_stake = voting_power(stake, neuron.bonus_multiplier);
-            if vote_for {
-                proposal.tally.yes += effective_stake;
+                let effective_stake = voting_power(stake, neuron.bonus_multiplier);
+                if vote_for {
+                    proposal.tally.yes += effective_stake;
+                } else {
+                    proposal.tally.no += effective_stake;
+                }
+                proposal.tally.total += effective_stake;
+                found = Some(proposal);
+                break;
             } else {
-                proposal.tally.no += effective_stake;
+                temp.push(proposal);
             }
-            proposal.tally.total += effective_stake;
-            found = Some(proposal);
-            break;
+        }
+
+        for p in temp {
+            heap.push(p);
+        }
+
+        if let Some(proposal) = found {
+            heap.push(proposal);
         } else {
-            temp.push(proposal);
+            return Err("Proposal not found".to_string()).expect("Couldn't return an error message");
         }
     }
 
-    for p in temp {
-        heap.push(p);
-    }
-
-    if let Some(proposal) = found {
-        heap.push(proposal);
-        Ok(())
-    } else {
-        Err("Proposal not found".to_string())
-    }
+    governance.persist_proposals();
+    Ok(())
 }
 
 pub fn finalize(
@@ -98,7 +102,11 @@ pub fn finalize(
     }
 
     match finalized {
-        Some(result) => Ok(result),
+        Some(result) => {
+            drop(heap);
+            governance.persist_proposals();
+            Ok(result)
+        },
         None => Err("Proposal not found".to_string()),
     }
 }

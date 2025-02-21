@@ -3,3 +3,5 @@
 /nebula_db
 /.cargo
 /*.tar.gz
+/c.bat
+/data
